@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tracker de UAT — Witbor</title>
+  <meta name="robots" content="noindex, nofollow" />
+
+  <!-- Silenciador del aviso de Tailwind: debe ejecutarse ANTES del CDN (sin defer) -->
+  <script src="js/console-filter.js"></script>
+
+  <!-- Dependencias externas por CDN (fuentes/librerías) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js"></script>
+  <!-- Base de datos compartida (login + datos en vivo) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- SheetJS (lectura de Excel) NO va aquí: se carga solo al importar (utils.js) -->
+
+  <!-- Tipografías de marca: Open Sans (títulos) y Source Sans 3 (texto) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Source+Sans+3:wght@400;500;600&display=swap" />
+
+  <!-- Estilos propios: base.css primero, luego el resto en orden del DOM -->
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/boot.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+</head>
+<body>
+  <!-- Punto de montaje de React -->
+  <div id="root"></div>
+
+  <!-- Estado de carga (se oculta cuando React monta) -->
+  <div id="boot-loader">Cargando Tracker de UAT…</div>
+
+  <!-- Pantalla de error de arranque -->
+  <div id="boot-error">
+    <div class="box">
+      <h2>No se pudo iniciar la aplicación</h2>
+      <p id="boot-error-msg">Ocurrió un problema al cargar los recursos.</p>
+      <p class="note note--spaced">
+        <strong>Si estás abriendo el archivo directamente (<code>file://</code>)</strong>, algunos navegadores bloquean la carga.
+        Ábrelo desde el enlace publicado o con un servidor local.
+      </p>
+      <p class="note">Verifica también que tu red permita acceder a <code>cdn.jsdelivr.net</code>, <code>unpkg.com</code> y <code>cdn.tailwindcss.com</code>.</p>
+    </div>
+  </div>
+
+  <!-- Manejo de fallos de arranque (antes de la app, sin defer) -->
+  <script src="js/boot.js"></script>
+
+  <!-- Aplicación: JSX transpilado en el navegador por Babel.
+       Orden = orden de dependencia (config → db → data → utils → icons → componentes → app). -->
+  <script type="text/babel" src="js/config.js"></script>
+  <script type="text/babel" src="js/db.js"></script>
+  <script type="text/babel" src="js/data.js"></script>
+  <script type="text/babel" src="js/utils.js"></script>
+  <script type="text/babel" src="js/icons.js"></script>
+  <script type="text/babel" src="js/components/FilterSelect.js"></script>
+  <script type="text/babel" src="js/components/Logos.js"></script>
+  <script type="text/babel" src="js/components/LockScreen.js"></script>
+  <script type="text/babel" src="js/components/NameSelect.js"></script>
+  <script type="text/babel" src="js/components/Dashboard.js"></script>
+  <script type="text/babel" src="js/components/ModuleTab.js"></script>
+  <script type="text/babel" src="js/components/Incidents.js"></script>
+  <script type="text/babel" src="js/components/StatusEmail.js"></script>
+  <script type="text/babel" src="js/components/ImportWizard.js"></script>
+  <script type="text/babel" src="js/app.js"></script>
+</body>
+</html>

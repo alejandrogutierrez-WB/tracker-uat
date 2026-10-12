@@ -1,0 +1,62 @@
+/* ============================================================
+   base.css — reset, variables globales y tipografía base
+   Se carga PRIMERO. El resto de CSS depende de estas variables.
+   Colores y tipografías: Manual de marca Witbor 2026.
+   ============================================================ */
+
+:root {
+  /* ---- Gradiente del logo (solo acentos: barras, detalles) ---- */
+  --witbor-cian:    #6ED2FF;
+  --witbor-azul:    #3C72F8; /* también CTA, links y resaltados */
+  --witbor-violeta: #9E37E6;
+  --witbor-rosa:    #F5649B;
+  --witbor-gradiente: linear-gradient(90deg, #6ED2FF 0%, #3C72F8 34%, #9E37E6 68%, #F5649B 100%);
+
+  /* ---- Fondos ---- */
+  --color-bg:        #F5F5F5; /* fondo claro por defecto */
+  --color-bg-oscuro: #0A1266; /* encabezado y pantalla de acceso */
+  --color-bg-violeta:#672496; /* banner "MODO TEST" */
+
+  /* ---- Texto ---- */
+  --color-titulo: #121228; /* títulos sobre fondo claro */
+  --color-texto:  #5C5F66; /* cuerpo sobre fondo claro  */
+
+  /* ---- Sombras del banner "MODO TEST" (violeta) ---- */
+  --shadow-test:        rgba(103, 36, 150, 0.35);
+  --shadow-test-strong: rgba(103, 36, 150, 0.65);
+
+  /* ---- Radios ---- */
+  --radius-sm: 4px;
+  --radius-md: 12px;
+
+  /* ---- Tipografía: Open Sans (títulos) + Source Sans 3 (texto) ---- */
+  --font-titulo: "Open Sans", Arial, sans-serif;
+  --font-texto:  "Source Sans 3", Calibri, Arial, sans-serif;
+}
+
+/* ---- Reset mínimo / base del documento ---- */
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-texto);
+  background: var(--color-bg);
+  color: var(--color-texto);
+}
+
+select, input, textarea, button { font-family: inherit; }
+
+/* Títulos y encabezados */
+.font-title { font-family: var(--font-titulo); color: var(--color-titulo); }
+.font-title-claro { font-family: var(--font-titulo); color: #F5F5F5; }
+
+/* Volanta: línea en mayúsculas sobre el título */
+.volanta { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-texto); }
+.volanta-claro { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: #CCCCCC; }
+
+/* Barra fina con el gradiente de marca (bajo el encabezado, borde de tarjetas) */
+.barra-gradiente { height: 4px; background: var(--witbor-gradiente); }
+
+/* Co-branding: witbor | cliente (el cliente a la derecha, divisor fijo) */
+.cobranding { display: flex; align-items: center; gap: 14px; }
+.cobranding .divisor { width: 1px; align-self: stretch; background: currentColor; opacity: 0.45; }

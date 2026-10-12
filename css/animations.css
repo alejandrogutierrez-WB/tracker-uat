@@ -1,0 +1,15 @@
+/* ============================================================
+   animations.css — animaciones del banner de "MODO TEST"
+   Los keyframes se referencian por nombre desde estilos inline
+   de React (propiedad animation), que no cambian.
+   ============================================================ */
+
+@keyframes testPulse {
+  0%, 100% { box-shadow: 0 8px 24px var(--shadow-test); }
+  50%      { box-shadow: 0 10px 30px var(--shadow-test-strong); }
+}
+
+@keyframes testFlaskWiggle {
+  0%, 100% { transform: rotate(-6deg); }
+  50%      { transform: rotate(6deg); }
+}

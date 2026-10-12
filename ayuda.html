@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cómo usar el Tracker de UAT</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Source+Sans+3:wght@400;600&display=swap" />
+  <link rel="stylesheet" href="css/base.css" />
+  <style>
+    /* Manual de una página para los usuarios del cliente. Se puede imprimir. */
+    body { background: #fff; }
+    .hoja { max-width: 820px; margin: 0 auto; padding: 0 20px 24px; font-size: 15px; line-height: 1.5; }
+    .cabecera { background: var(--color-bg-oscuro); padding: 18px 20px; margin: 0 -20px; }
+    .cabecera img { height: 30px; display: block; }
+    .cabecera h1 { font-family: var(--font-titulo); font-weight: 400; font-size: 24px; color: #F5F5F5; margin: 10px 0 0; }
+    .barra-gradiente { margin: 0 -20px 18px; }
+    h2 { font-family: var(--font-titulo); font-weight: 600; font-size: 16px; color: var(--color-titulo); margin: 18px 0 6px; }
+    h2 span { display: inline-block; width: 24px; height: 24px; line-height: 24px; text-align: center; border-radius: 50%;
+              background: var(--witbor-azul); color: #fff; font-size: 13px; margin-right: 8px; }
+    p, li { margin: 0 0 5px; }
+    ul { margin: 0; padding-left: 40px; }
+    strong { color: var(--color-titulo); }
+    .estados { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 4px 32px; }
+    .estados b { font-weight: 600; font-size: 13px; border-radius: 8px; padding: 5px 10px; border: 1px solid; }
+    .e1 { background: #E5E7EB; color: #374151; border-color: #D1D5DB; }
+    .e2 { background: #DBEAFE; color: #1E40AF; border-color: #93C5FD; }
+    .e3 { background: #D1FAE5; color: #065F46; border-color: #6EE7B7; }
+    .e4 { background: #FFE4E6; color: #9F1239; border-color: #FDA4AF; }
+    .nota { background: var(--color-bg); border-left: 4px solid var(--witbor-azul); padding: 10px 14px; margin-top: 18px; font-size: 14px; }
+    @media print { .hoja { font-size: 12.5px; } .cabecera, .barra-gradiente, .estados b, h2 span { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  </style>
+</head>
+<body>
+  <div class="hoja">
+    <div class="cabecera">
+      <img src="img/logo-witbor-blanco.png" alt="witbor" />
+      <h1>Cómo usar el Tracker de UAT</h1>
+    </div>
+    <div class="barra-gradiente"></div>
+
+    <p>El tracker es donde registras el avance de tus casos de prueba. Lo que marcas lo ve todo el equipo del proyecto al instante. Funciona en la computadora y en el celular.</p>
+
+    <h2><span>1</span>Ingresar</h2>
+    <ul>
+      <li>Abre el enlace que te envió el PM de Witbor y escribe la <strong>contraseña del proyecto</strong>.</li>
+      <li>Elige <strong>tu nombre</strong> de la lista. Con ese nombre quedan registrados tus cambios. El navegador lo recuerda para la próxima vez.</li>
+      <li>Si no estás en la lista, avisa al PM para que te agregue.</li>
+    </ul>
+
+    <h2><span>2</span>Cambiar el estado de un caso</h2>
+    <ul>
+      <li>Entra a la pestaña de <strong>tu módulo</strong> (GL, AP, CE…). Los casos están agrupados por flujo.</li>
+      <li>Toca el botón del estado que corresponde. Se guarda solo, no hay botón de guardar.</li>
+    </ul>
+    <div class="estados">
+      <b class="e1">No iniciado</b><b class="e2">En curso</b><b class="e3">Aprobado</b><b class="e4">Incidente</b>
+    </div>
+    <ul>
+      <li><strong>En curso:</strong> empezaste a probarlo y todavía no terminaste.</li>
+      <li><strong>Aprobado:</strong> lo ejecutaste y el resultado es el esperado.</li>
+      <li><strong>Incidente:</strong> algo falló o no puedes avanzar (ver punto 4).</li>
+      <li>Toca el nombre del caso para ver la descripción completa y el resultado esperado.</li>
+    </ul>
+
+    <h2><span>3</span>Comentar</h2>
+    <ul>
+      <li>En el caso, toca <strong>Agregar comentario</strong>, escribe y pulsa <strong>Guardar</strong>.</li>
+      <li>Úsalo para dejar qué probaste, qué falta o cualquier dato que ayude al consultor.</li>
+      <li>No pegues datos sensibles (montos reales, datos de empleados). La evidencia va en Redmine.</li>
+    </ul>
+
+    <h2><span>4</span>Reportar un incidente</h2>
+    <ul>
+      <li>Primero <strong>registra el incidente en Redmine</strong> (un incidente por problema) y anota su número.</li>
+      <li>En el tracker, toca <strong>Incidente</strong> en el caso, escribe el <strong>número de Redmine</strong> y pulsa <strong>Guardar</strong>.</li>
+      <li>Cuando el incidente se resuelva, vuelve a probar el caso y márcalo <strong>Aprobado</strong>.</li>
+    </ul>
+
+    <h2><span>5</span>Agregar un caso que no está en la lista</h2>
+    <ul>
+      <li>En tu módulo, toca <strong>Agregar caso</strong> y completa al menos el nombre.</li>
+      <li>El caso queda <strong>pendiente de validación</strong> hasta que el consultor de Witbor lo acepte. Recién entonces cuenta en el avance.</li>
+    </ul>
+
+    <div class="nota">
+      <strong>Actualiza el mismo día que pruebas.</strong> El avance de la UAT se informa por correo a todo el equipo, con el porcentaje por módulo y los módulos que llevan días sin actualizarse.
+      Si un caso aparece como «No aplica», lo marcó el equipo de Witbor: consúltalo con tu consultor.
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,50 @@
+/* ============================================================
+   boot.css — pantalla de carga y de error de arranque
+   Visibles antes (y en lugar) de que React monte la aplicación.
+   ============================================================ */
+
+/* Loader visible mientras se carga la app; se oculta cuando React renderiza */
+#boot-loader {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  color: var(--color-titulo);
+  font-size: 14px;
+  z-index: 1;
+}
+
+/* Pantalla de error de arranque (oculta por defecto) */
+#boot-error {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  padding: 24px;
+  z-index: 2;
+}
+#boot-error .box {
+  max-width: 520px;
+  background: #fff;
+  border: 1px solid #FCA5A5;
+  border-radius: var(--radius-md);
+  padding: 20px;
+  color: #7F1D1D;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+#boot-error h2 { margin: 0 0 8px; font-size: 16px; }
+#boot-error p  { margin: 4px 0; font-size: 13px; line-height: 1.5; }
+#boot-error code {
+  background: #FEF2F2;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+/* Notas informativas dentro del error (antes eran estilos inline) */
+#boot-error .note         { color: #374151; }
+#boot-error .note--spaced { margin-top: 10px; }
