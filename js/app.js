@@ -205,7 +205,7 @@
           <div className="max-w-7xl mx-auto px-4 pt-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                <Logos dark clientUrl={project.logo_cliente_url} clientName={project.cliente} className="h-8" />
+                <Logos dark clientUrl={project.logo_cliente_url} clientName={project.cliente} className="h-9" />
                 <div>
                   <p className="volanta-claro">UAT · {project.cliente}</p>
                   <h1 className="font-title-claro text-xl leading-tight">{project.nombre}</h1>

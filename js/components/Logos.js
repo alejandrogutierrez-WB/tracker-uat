@@ -1,9 +1,8 @@
 /* ============================================================
    Logos.js — firma de marca: witbor | cliente
-   Reglas del manual de marca: logo de color sobre fondo claro y
-   logo blanco sobre fondo oscuro; el cliente va a la derecha, con
-   un divisor fijo y a una escala equivalente. El logo no se
-   deforma ni se recolorea.
+   Logo de color (gradiente) de Witbor y logo del cliente a la derecha,
+   con un divisor fijo y a una escala equivalente, directo sobre el
+   fondo (claro u oscuro). El logo no se deforma ni se recolorea.
    Si el logo del cliente no existe, se muestra solo el de Witbor.
    Depende de: React (hooks), BRAND
    Publica en window.UAT: Logos
@@ -18,13 +17,15 @@
 
     return (
       <div className="cobranding" style={{ color: dark ? "#F5F5F5" : BRAND.body }}>
-        <img src={dark ? BRAND.logoWhite : BRAND.logoColor} alt="witbor" className={className + " w-auto shrink-0"} />
+        {/* Logo de color también sobre el encabezado oscuro, sin tarjeta blanca
+            (decisión del PM, 12-oct-2026; el manual de marca pediría logo blanco) */}
+        <img src={BRAND.logoColor} alt="witbor" className={className + " w-auto shrink-0"} />
         {clientOk && (
           <>
             <span className="divisor" />
-            {/* Sobre fondo oscuro el logo del cliente va en una tarjeta blanca para no perder contraste */}
+            {/* Sin tarjeta blanca: un logo de cliente oscuro necesita una versión clara del PNG */}
             <img src={clientUrl} alt={clientName || ""} onError={() => setClientOk(false)}
-              className={className + " w-auto shrink-0 " + (dark ? "bg-white rounded-md px-2 py-1" : "")} />
+              className={className + " w-auto shrink-0"} />
           </>
         )}
       </div>
