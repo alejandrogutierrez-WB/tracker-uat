@@ -6,20 +6,23 @@
    con destinatarios y asunto cargados: el PM pega y envía.
    Alternativas: cliente de correo (mailto, texto plano) y descarga
    del cuerpo en .html.
-   Depende de: React (hooks), Icon, I, BRAND, ESTADOS, REDMINE_URL,
-   APP_URL, stats, moduleStatus, dayIn, businessDays, daysBetween,
-   fmtDate, fmtDateTime, updateProject
+   Depende de: React (hooks), Icon, I, BRAND, INPUT_CLS, REDMINE_URL,
+   APP_URL, stats, moduleStatus, incidentRows, businessDaysLeft, dayIn,
+   fmtDate, fmtDateTime, fmtFechaAsunto, updateProject
    Publica en window.UAT: StatusEmail
    ============================================================ */
 (function () {
   const { useState } = React;
   const {
-    Icon, I, BRAND, REDMINE_URL, APP_URL, stats, moduleStatus,
-    dayIn, businessDays, daysBetween, fmtDate, fmtDateTime, updateProject,
+    Icon, I, BRAND, INPUT_CLS, REDMINE_URL, APP_URL, stats, moduleStatus, incidentRows, businessDaysLeft,
+    dayIn, fmtDate, fmtDateTime, fmtFechaAsunto, updateProject,
   } = window.UAT;
 
-  const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-  const fechaAsunto = (s) => { const [y, m, d] = s.split("-"); return `${d}-${MESES[Number(m) - 1]}-${y}`; };
+  /* Colores del correo: los de marca vienen de BRAND; el resto son neutros propios del correo. */
+  const C = {
+    ink: BRAND.ink, body: BRAND.body, cta: BRAND.cta, dark: BRAND.dark, soft: BRAND.soft, lightBody: BRAND.lightBody, line: BRAND.line,
+    border: "#E5E7EB", rowLine: "#EEEFF2", warnBorder: "#F3D9A4", warnBg: "#FFFBEB",
+  };
   const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const parseDest = (s) => String(s || "").split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean);
 
@@ -27,45 +30,41 @@
      El HTML usa tablas y estilos en línea, que es lo que respetan Gmail y
      Outlook. Todo dato que viene de la base pasa por esc(). */
   function buildStatus({ project, modules, cases, byModule, incidentDates, ciclo, mensaje }) {
-    const tz = project.zona_horaria;
-    const today = dayIn(tz);
+    const today = dayIn(project.zona_horaria);
     const g = stats(cases);
     const rows = moduleStatus(project, modules, byModule, today);
     const alertas = rows.filter((r) => r.alerta);
-    const start = project.fecha_inicio_uat, end = project.fecha_fin_uat;
-    const restantes = !end ? null : today > end ? 0 : businessDays(start && start > today ? start : today, end, project.feriados || []);
-    const incidentes = cases.filter((c) => c.estado === "Con incidente" && c.validado && !c.rechazado).map((c) => {
-      const desde = dayIn(tz, incidentDates[c.id] || c.updated_at || undefined);
-      return { c, mod: modules.find((m) => m.id === c.module_id), dias: Math.max(daysBetween(desde, today), 0) };
-    }).sort((a, b) => b.dias - a.dias);
+    const end = project.fecha_fin_uat;
+    const restantes = businessDaysLeft(project, today);
+    const incidentes = incidentRows({ project, modules, cases, incidentDates, today });
     const url = (APP_URL || (window.location.origin + window.location.pathname)) + "?p=" + project.slug;
-    const subject = `UAT ${project.cliente} — Estatus al ${fechaAsunto(today)}`;
+    const subject = `UAT ${project.cliente} — Estatus al ${fmtFechaAsunto(today)}`;
     const n = project.dias_alerta;
     const ultima = (r) => (r.last ? `${r.last.updated_by} · ${fmtDateTime(r.last.updated_at)}`
       : r.st.total === 0 ? "Sin casos cargados" : !r.empezo ? (r.inicio ? `Empieza el ${fmtDate(r.inicio)}` : "—") : "Sin actualizaciones");
 
     /* ----- HTML ----- */
     const F = "font-family:Arial,Helvetica,sans-serif;";
-    const th = `${F}font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#121228;background:#F5F5F5;padding:8px 8px;text-align:left;border-bottom:1px solid #D8DAE0;`;
-    const td = `${F}font-size:13px;color:#5C5F66;padding:8px 8px;border-bottom:1px solid #EEEFF2;vertical-align:top;`;
+    const th = `${F}font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:${C.ink};background:${C.soft};padding:8px 8px;text-align:left;border-bottom:1px solid ${C.line};`;
+    const td = `${F}font-size:13px;color:${C.body};padding:8px 8px;border-bottom:1px solid ${C.rowLine};vertical-align:top;`;
     const num = "text-align:right;white-space:nowrap;";
-    const h3 = `${F}font-size:15px;color:#121228;margin:22px 0 8px;font-weight:bold;`;
+    const h3 = `${F}font-size:15px;color:${C.ink};margin:22px 0 8px;font-weight:bold;`;
     const kpi = (label, value, note) =>
-      `<td width="25%" style="${F}padding:12px 14px;border:1px solid #E5E7EB;vertical-align:top;">` +
-      `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#5C5F66;">${esc(label)}</div>` +
-      `<div style="font-size:24px;color:#121228;line-height:1.3;">${esc(value)}</div>` +
-      `<div style="font-size:11px;color:#5C5F66;">${esc(note)}</div></td>`;
+      `<td width="25%" style="${F}padding:12px 14px;border:1px solid ${C.border};vertical-align:top;">` +
+      `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:${C.body};">${esc(label)}</div>` +
+      `<div style="font-size:24px;color:${C.ink};line-height:1.3;">${esc(value)}</div>` +
+      `<div style="font-size:11px;color:${C.body};">${esc(note)}</div></td>`;
 
-    let html = `<div style="${F}font-size:14px;line-height:1.5;color:#5C5F66;max-width:800px;">`;
+    let html = `<div style="${F}font-size:14px;line-height:1.5;color:${C.body};max-width:800px;">`;
     if (mensaje.trim()) {
-      html += mensaje.trim().split(/\n{2,}/).map((p) => `<p style="${F}font-size:14px;color:#121228;margin:0 0 12px;">${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
+      html += mensaje.trim().split(/\n{2,}/).map((p) => `<p style="${F}font-size:14px;color:${C.ink};margin:0 0 12px;">${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
     }
     html += `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-top:6px;">` +
-      `<tr><td style="background:#0A1266;padding:16px 20px;">` +
-      `<div style="${F}font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#CCCCCC;">UAT · ${esc(project.cliente)} · ${esc(ciclo)}</div>` +
-      `<div style="${F}font-size:20px;color:#F5F5F5;">Estatus al ${fechaAsunto(today)}</div></td></tr>` +
+      `<tr><td style="background:${C.dark};padding:16px 20px;">` +
+      `<div style="${F}font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:${C.lightBody};">UAT · ${esc(project.cliente)} · ${esc(ciclo)}</div>` +
+      `<div style="${F}font-size:20px;color:${C.soft};">Estatus al ${fmtFechaAsunto(today)}</div></td></tr>` +
       `<tr><td style="padding:0;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;"><tr>` +
-      ["#6ED2FF", "#3C72F8", "#9E37E6", "#F5649B"].map((c) => `<td width="25%" height="4" style="background:${c};font-size:0;line-height:0;">&nbsp;</td>`).join("") +
+      BRAND.stops.map((c) => `<td width="25%" height="4" style="background:${c};font-size:0;line-height:0;">&nbsp;</td>`).join("") +
       `</tr></table></td></tr></table>`;
 
     html += `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-top:14px;"><tr>` +
@@ -76,43 +75,43 @@
       `</tr></table>`;
 
     html += `<p style="${h3}">Avance por módulo</p>` +
-      `<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #E5E7EB;">` +
+      `<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid ${C.border};">` +
       `<tr><th style="${th}">Módulo</th><th style="${th}">Responsable</th><th style="${th}text-align:right;">Total</th><th style="${th}text-align:right;">Aprobados</th>` +
       `<th style="${th}text-align:right;">En curso</th><th style="${th}text-align:right;">Con incidente</th><th style="${th}text-align:right;">No iniciados</th>` +
       `<th style="${th}text-align:right;">% avance</th><th style="${th}">Última actualización</th></tr>` +
-      rows.map((r) => `<tr><td style="${td}color:#121228;font-weight:bold;">${esc(r.m.nombre)}</td><td style="${td}">${esc(r.m.responsable_nombre || "—")}</td>` +
+      rows.map((r) => `<tr><td style="${td}color:${C.ink};font-weight:bold;">${esc(r.m.nombre)}</td><td style="${td}">${esc(r.m.responsable_nombre || "—")}</td>` +
         `<td style="${td}${num}">${r.st.base}</td><td style="${td}${num}">${r.st.by["Aprobado"]}</td><td style="${td}${num}">${r.st.by["En curso"]}</td>` +
         `<td style="${td}${num}">${r.st.by["Con incidente"]}</td><td style="${td}${num}">${r.st.by["No iniciado"]}</td>` +
-        `<td style="${td}${num}color:#121228;font-weight:bold;">${r.st.avance}%</td><td style="${td}">${esc(ultima(r))}</td></tr>`).join("") +
+        `<td style="${td}${num}color:${C.ink};font-weight:bold;">${r.st.avance}%</td><td style="${td}">${esc(ultima(r))}</td></tr>`).join("") +
       `</table>`;
 
     html += `<p style="${h3}">Sin actualizar en los últimos ${n} días hábiles</p>`;
     html += alertas.length
-      ? `<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #F3D9A4;background:#FFFBEB;">` +
-        alertas.map((r) => `<tr><td style="${td}color:#121228;font-weight:bold;border-bottom:1px solid #F3D9A4;">${esc(r.m.responsable_nombre || "Sin responsable")}</td>` +
-          `<td style="${td}border-bottom:1px solid #F3D9A4;">${esc(r.m.nombre)}</td>` +
-          `<td style="${td}border-bottom:1px solid #F3D9A4;">${r.sinActualizar} días hábiles sin actualizar · ${esc(r.last ? "última: " + fmtDateTime(r.last.updated_at) : "todavía sin actualizaciones")}</td></tr>`).join("") +
+      ? `<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid ${C.warnBorder};background:${C.warnBg};">` +
+        alertas.map((r) => `<tr><td style="${td}color:${C.ink};font-weight:bold;border-bottom:1px solid ${C.warnBorder};">${esc(r.m.responsable_nombre || "Sin responsable")}</td>` +
+          `<td style="${td}border-bottom:1px solid ${C.warnBorder};">${esc(r.m.nombre)}</td>` +
+          `<td style="${td}border-bottom:1px solid ${C.warnBorder};">${r.sinActualizar} días hábiles sin actualizar · ${esc(r.last ? "última: " + fmtDateTime(r.last.updated_at) : "todavía sin actualizaciones")}</td></tr>`).join("") +
         `</table>`
-      : `<p style="${F}font-size:13px;color:#5C5F66;margin:0;">Todos los módulos en pruebas se actualizaron en los últimos ${n} días hábiles.</p>`;
+      : `<p style="${F}font-size:13px;color:${C.body};margin:0;">Todos los módulos en pruebas se actualizaron en los últimos ${n} días hábiles.</p>`;
 
     html += `<p style="${h3}">Incidentes abiertos</p>`;
     html += incidentes.length
-      ? `<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #E5E7EB;">` +
+      ? `<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid ${C.border};">` +
         `<tr><th style="${th}">Módulo</th><th style="${th}">Caso</th><th style="${th}">Incidente</th><th style="${th}text-align:right;">Días abierto</th></tr>` +
         incidentes.map(({ c, mod, dias }) => `<tr><td style="${td}">${esc(mod ? mod.nombre : "")}</td>` +
-          `<td style="${td}"><span style="color:#121228;font-weight:bold;">${esc(c.codigo)}</span> ${esc(c.caso)}</td>` +
+          `<td style="${td}"><span style="color:${C.ink};font-weight:bold;">${esc(c.codigo)}</span> ${esc(c.caso)}</td>` +
           `<td style="${td}white-space:nowrap;">${/^\d+$/.test(c.ticket_incidente || "")
-            ? `<a href="${esc(REDMINE_URL + c.ticket_incidente)}" style="color:#3C72F8;">#${esc(c.ticket_incidente)}</a>` : esc(c.ticket_incidente || "—")}</td>` +
+            ? `<a href="${esc(REDMINE_URL + c.ticket_incidente)}" style="color:${C.cta};">#${esc(c.ticket_incidente)}</a>` : esc(c.ticket_incidente || "—")}</td>` +
           `<td style="${td}${num}">${dias}</td></tr>`).join("") + `</table>`
-      : `<p style="${F}font-size:13px;color:#5C5F66;margin:0;">No hay incidentes abiertos.</p>`;
+      : `<p style="${F}font-size:13px;color:${C.body};margin:0;">No hay incidentes abiertos.</p>`;
 
-    html += `<p style="${F}font-size:13px;color:#5C5F66;margin:22px 0 0;">Para actualizar el estado de tus casos: ` +
-      `<a href="${esc(url)}" style="color:#3C72F8;font-weight:bold;">abrir el Tracker de UAT</a></p></div>`;
+    html += `<p style="${F}font-size:13px;color:${C.body};margin:22px 0 0;">Para actualizar el estado de tus casos: ` +
+      `<a href="${esc(url)}" style="color:${C.cta};font-weight:bold;">abrir el Tracker de UAT</a></p></div>`;
 
     /* ----- Texto plano (mailto y respaldo del portapapeles) ----- */
     const L = [];
     if (mensaje.trim()) L.push(mensaje.trim(), "");
-    L.push(`UAT ${project.cliente} · ${ciclo} — Estatus al ${fechaAsunto(today)}`, "");
+    L.push(`UAT ${project.cliente} · ${ciclo} — Estatus al ${fmtFechaAsunto(today)}`, "");
     L.push(`Avance: ${g.avance}% (${g.by["Aprobado"]} de ${g.base} casos aprobados)`, `Ejecutado: ${g.ejecutado}%`,
       `Incidentes abiertos: ${g.by["Con incidente"]}`, `Días hábiles restantes: ${restantes === null ? "—" : restantes}`, "");
     L.push("AVANCE POR MÓDULO");
@@ -189,7 +188,7 @@
       registrar();
     }
 
-    const inputCls = "w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400";
+    const inputCls = INPUT_CLS;
     const btn2 = "flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50";
 
     return (

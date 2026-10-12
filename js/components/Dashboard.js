@@ -5,20 +5,20 @@
    última actualización y la alerta de "sin actualizar", y la curva
    de avance diario (fotos de daily_snapshots + el día de hoy en vivo).
    Depende de: React (hooks), Icon, I, BRAND, ESTADOS, stats, moduleStatus, dayIn,
-   addDays, businessDays, fmtDia, fmtDate, fmtDateTime
+   addDays, businessDaysLeft, fmtDia, fmtDate, fmtDateTime
    Publica en window.UAT: Dashboard
    ============================================================ */
 (function () {
   const { useState, useMemo } = React;
-  const { Icon, I, BRAND, ESTADOS, stats, moduleStatus, dayIn, addDays, businessDays, fmtDia, fmtDate, fmtDateTime } = window.UAT;
+  const { Icon, I, BRAND, ESTADOS, stats, moduleStatus, businessDaysLeft, dayIn, addDays, fmtDia, fmtDate, fmtDateTime } = window.UAT;
 
   /* Colores de las dos series de la curva (validados para daltonismo y
      contraste). El texto nunca va en el color de la serie. */
   const SERIES = [
-    { id: "avance",    label: "% avance",    color: "#3C72F8" },
-    { id: "ejecutado", label: "% ejecutado", color: "#E0508A" },
+    { id: "avance",    label: "% avance",    color: BRAND.cta },
+    { id: "ejecutado", label: "% ejecutado", color: BRAND.chart2 },
   ];
-  const GRID = "#D8DAE0";
+  const GRID = BRAND.line;
 
   function Tile({ label, value, note, onClick, tone }) {
     const Tag = onClick ? "button" : "div";
@@ -102,7 +102,7 @@
               <text key={d} x={x(d)} y={H - 8} textAnchor="middle" fontSize="11" fill={BRAND.body}>{fmtDia(d)}</text>
             ))}
             {start && end && (
-              <line x1={x(start)} y1={y(0)} x2={x(end)} y2={y(100)} stroke="#9CA3AF" strokeWidth="1.5" strokeDasharray="5 5" />
+              <line x1={x(start)} y1={y(0)} x2={x(end)} y2={y(100)} stroke={BRAND.muted} strokeWidth="1.5" strokeDasharray="5 5" />
             )}
             {today >= first && today <= last && (
               <line x1={x(today)} x2={x(today)} y1={T} y2={H - B} stroke={GRID} strokeWidth="1" strokeDasharray="2 3" />
@@ -162,11 +162,10 @@
   /* ============================================================ */
   function Dashboard({ project, modules, cases, byModule, snapshots, ciclo, isWitbor, onOpenModule, onOpenIncidents }) {
     const today = dayIn(project.zona_horaria);
-    const feriados = project.feriados || [];
     const general = useMemo(() => stats(cases), [cases]);
     const start = project.fecha_inicio_uat, end = project.fecha_fin_uat;
 
-    const restantes = !end ? null : today > end ? 0 : businessDays(start && start > today ? start : today, end, feriados);
+    const restantes = businessDaysLeft(project, today);
     const fase = !start || !end ? "" : today < start ? `Empieza el ${fmtDate(start)}` : today > end ? `Terminó el ${fmtDate(end)}` : `Cierra el ${fmtDate(end)}`;
 
     /* Por módulo: avance, última actualización y alerta de inactividad. */
@@ -203,7 +202,7 @@
           <Tile label="Avance" value={general.avance + "%"} note={`${general.by["Aprobado"]} de ${general.base} casos aprobados`} />
           <Tile label="Ejecutado" value={general.ejecutado + "%"} note="En curso, aprobados o con incidente" />
           <Tile label="Incidentes abiertos" value={general.by["Con incidente"]} note="Ver el detalle"
-            onClick={onOpenIncidents} tone={general.by["Con incidente"] > 0 ? "#BE123C" : undefined} />
+            onClick={onOpenIncidents} tone={general.by["Con incidente"] > 0 ? BRAND.danger : undefined} />
           <Tile label="Días hábiles restantes" value={restantes === null ? "—" : restantes} note={fase} />
         </div>
 

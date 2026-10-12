@@ -1,20 +1,22 @@
 /* ============================================================
    app.js — componente raíz TrackerUAT y arranque de React.
-   Puerta de acceso (contraseña → nombre), encabezado, selector de
-   ciclo y pestañas: Tablero, una por módulo, Incidentes y
-   Administración.
+   Puerta de acceso (contraseña → nombre) y orquestación: carga de
+   datos, tiempo real, modo TEST y qué pestaña se muestra. Cada
+   pantalla es un componente aparte (Header, Dashboard, ModuleTab,
+   Incidents, AdminTab).
    Debe cargarse DESPUÉS de config, db, data, utils, icons y componentes.
-   Depende de window.UAT: BRAND, store, csvEscape, fmtDateTime, Icon, I, Logos, LockScreen,
-   NameSelect, Dashboard, ModuleTab, Incidents, StatusEmail, ImportWizard,
-   getSession, sessionInfo, signOut, loadProject, loadModules,
-   loadParticipants, loadCases, loadSnapshots, loadIncidentDates,
-   subscribeProject, setTestBackend, buildTestStore, makeTestBackend
+   Depende de window.UAT: BRAND, store, openIncidents, Icon, I,
+   LockScreen, NameSelect, Header, TestBanner, Dashboard, ModuleTab,
+   Incidents, AdminTab, getSession, sessionInfo, signOut, loadProject,
+   loadModules, loadParticipants, loadCases, loadSnapshots,
+   loadIncidentDates, subscribeProject, setTestBackend, buildTestStore,
+   makeTestBackend
    ============================================================ */
 (function () {
   const { useState, useEffect, useMemo, useCallback, useRef } = React;
   const {
-    BRAND, store, csvEscape, fmtDateTime,
-    Icon, I, Logos, LockScreen, NameSelect, Dashboard, ModuleTab, Incidents, StatusEmail, ImportWizard,
+    BRAND, store, openIncidents,
+    Icon, I, LockScreen, NameSelect, Header, TestBanner, Dashboard, ModuleTab, Incidents, AdminTab,
     getSession, sessionInfo, signOut,
     loadProject, loadModules, loadParticipants, loadCases, loadSnapshots, loadIncidentDates, subscribeProject,
     setTestBackend, buildTestStore, makeTestBackend,
@@ -162,22 +164,6 @@
       setCases((prev) => (prev.some((x) => x.id === c.id) ? prev.map((x) => (x.id === c.id ? c : x)) : [...prev, c]));
     }, []);
 
-    /* ---------- Exportar CSV (respaldo del ciclo en pantalla) ---------- */
-    function exportCSV() {
-      const header = ["Módulo", "N.º", "Código", "Flujo", "Caso de prueba", "Descripción", "Resultado esperado", "Criticidad", "Compañía",
-        "Responsable", "Estado", "Comentario", "Incidente", "Origen", "Validado", "Rechazado", "A revisar", "Actualizado por", "Última actualización"];
-      const rows = [header.join(",")];
-      modules.forEach((m) => (byModule[m.id] || []).forEach((c) => {
-        rows.push([m.codigo, c.numero, c.codigo, c.flujo, c.caso, c.descripcion, c.resultado_esperado, c.criticidad, c.compania,
-          c.responsable, c.estado, c.comentario, c.ticket_incidente, c.origen, c.validado ? "Sí" : "No", c.rechazado ? "Sí" : "No",
-          c.a_revisar ? "Sí" : "No", c.updated_by, c.updated_at ? fmtDateTime(c.updated_at) : ""].map(csvEscape).join(","));
-      }));
-      const url = URL.createObjectURL(new Blob([String.fromCharCode(0xFEFF) + rows.join(String.fromCharCode(10))], { type: "text/csv;charset=utf-8" }));
-      const a = document.createElement("a");
-      a.href = url; a.download = `UAT_${project.slug}_${ciclo.split(" ").join("_")}${testMode ? "_TEST" : ""}.csv`; a.click();
-      URL.revokeObjectURL(url);
-    }
-
     /* ---------- Derivados ---------- */
     const byModule = useMemo(() => {
       const map = {};
@@ -188,7 +174,7 @@
 
     if (loading) return <Splash label="Cargando casos de prueba…" />;
 
-    const incidentes = cases.filter((c) => c.estado === "Con incidente" && c.validado && !c.rechazado).length;
+    const incidentes = openIncidents(cases).length;
     const TABS = [{ id: "tablero", label: "Tablero", icon: I.Bar }]
       .concat(modules.map((m) => ({ id: m.id, label: m.codigo.replace(/_/g, " / "), badge: (byModule[m.id] || []).length })))
       .concat([{ id: "incidentes", label: "Incidentes", icon: I.Ticket, badge: incidentes }]);
@@ -200,99 +186,13 @@
     return (
       <div className="min-h-screen" style={{ background: BRAND.soft }}>
 
-        {/* Encabezado */}
-        <header style={{ background: BRAND.dark }}>
-          <div className="max-w-7xl mx-auto px-4 pt-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                <Logos dark clientUrl={project.logo_cliente_url} clientName={project.cliente} className="h-9" />
-                <div>
-                  <p className="volanta-claro">UAT · {project.cliente}</p>
-                  <h1 className="font-title-claro text-xl leading-tight">{project.nombre}</h1>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap text-white">
-                {project.ciclos.length > 1 && !testMode && (
-                  <select value={ciclo} onChange={(e) => setCiclo(e.target.value)} aria-label="Ciclo de pruebas"
-                    className="bg-white/15 rounded-lg px-3 py-2 text-sm text-white outline-none cursor-pointer">
-                    {project.ciclos.map((c) => <option key={c} value={c} className="text-gray-800">{c}</option>)}
-                  </select>
-                )}
-                <button onClick={onChangeName} title="Cambiar de persona"
-                  className="flex items-center gap-2 bg-white/15 hover:bg-white/25 rounded-lg px-3 py-2 text-sm">
-                  <Icon path={I.User} className="w-4 h-4 opacity-80" />
-                  <span className="max-w-36 truncate">{me.nombre}</span>
-                </button>
-                <button
-                  onClick={() => (testMode ? exitTestMode() : enterTestMode())}
-                  title={testMode ? "Salir del modo de práctica y volver a los datos reales" : "Practicar con datos ficticios sin afectar la información real"}
-                  className={"flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold tracking-wider " +
-                    (testMode ? "bg-white" : "bg-white/15 hover:bg-white/25 text-white")}
-                  style={testMode ? { color: BRAND.violet } : {}}>
-                  <Icon path={I.Flask} className="w-4 h-4" />
-                  <span>{testMode ? "SALIR TEST" : "TEST"}</span>
-                </button>
-                <button onClick={() => (testMode ? enterTestMode() : loadAll(true))}
-                  title={testMode ? "Volver a empezar la práctica" : "Actualizar datos"}
-                  className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 rounded-lg px-3 py-2 text-sm">
-                  <Icon path={I.Reload} className={"w-4 h-4 " + (syncing ? "animate-spin" : "")} />
-                  <span className="hidden sm:inline">{testMode ? "Reiniciar TEST" : "Actualizar"}</span>
-                </button>
-                <button onClick={onSignOut} title="Cerrar sesión"
-                  className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 rounded-lg px-3 py-2 text-sm">
-                  <Icon path={I.Logout} className="w-4 h-4" />
-                  <span className="hidden sm:inline">Salir</span>
-                </button>
-              </div>
-            </div>
+        <Header project={project} me={me} ciclo={ciclo} onCiclo={setCiclo} tabs={TABS} tab={tab} onTab={setTab}
+          testMode={testMode} syncing={syncing}
+          onToggleTest={() => (testMode ? exitTestMode() : enterTestMode())}
+          onReload={() => (testMode ? enterTestMode() : loadAll(true))}
+          onChangeName={onChangeName} onSignOut={onSignOut} />
 
-            <nav className="mt-4 flex gap-1 overflow-x-auto">
-              {TABS.map((t) => {
-                const active = tab === t.id;
-                return (
-                  <button key={t.id} onClick={() => setTab(t.id)}
-                    className={"flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-medium whitespace-nowrap transition-colors " +
-                      (active ? "" : "bg-white/10 text-white hover:bg-white/20")}
-                    style={active ? { background: BRAND.soft, color: BRAND.ink } : {}}>
-                    {t.icon && <Icon path={t.icon} className="w-4 h-4" />}
-                    {t.label}
-                    {t.badge !== undefined && (
-                      <span className={"text-xs rounded-full px-1.5 py-0.5 " + (active ? "bg-gray-200 text-gray-600" : "bg-white/20")}>
-                        {t.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-          <div className="barra-gradiente" />
-        </header>
-
-        {/* Aviso del modo TEST */}
-        {testMode && (
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-white rounded-xl px-5 py-4"
-              style={{ background: BRAND.violet, border: "3px solid #F0ABFC", animation: "testPulse 2s ease-in-out infinite" }}>
-              <span className="flex items-center gap-3">
-                <span className="flex items-center justify-center rounded-full bg-white/25 p-2 shrink-0"
-                  style={{ animation: "testFlaskWiggle 1.4s ease-in-out infinite" }}>
-                  <Icon path={I.Flask} className="w-6 h-6" />
-                </span>
-                <span className="flex flex-col">
-                  <span className="text-lg font-extrabold tracking-widest uppercase leading-tight">⚠ MODO TEST ACTIVO ⚠</span>
-                  <span className="text-sm leading-tight" style={{ color: "#F5F5F5" }}>
-                    Estás practicando con datos ficticios. Nada de lo que hagas aquí se guarda ni afecta el avance real del proyecto.
-                  </span>
-                </span>
-              </span>
-              <button onClick={exitTestMode}
-                className="bg-white font-bold text-sm uppercase tracking-wider rounded-lg px-4 py-2 whitespace-nowrap" style={{ color: BRAND.violet }}>
-                Salir del TEST
-              </button>
-            </div>
-          </div>
-        )}
+        {testMode && <TestBanner onExit={exitTestMode} />}
 
         {/* Avisos */}
         {loadError && (
@@ -323,33 +223,9 @@
 
           {/* ADMINISTRACIÓN (solo Witbor) */}
           {tab === "admin" && isWitbor && (
-            <section className="space-y-5">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <p className="volanta">Solo equipo Witbor</p>
-                  <h2 className="font-title text-2xl">Administración</h2>
-                </div>
-                <button onClick={exportCSV} title="Descargar todos los casos del ciclo con su estado"
-                  className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">
-                  <Icon path={I.Down} className="w-4 h-4" /> Exportar CSV
-                </button>
-              </div>
-              <StatusEmail project={project} modules={modules} cases={cases} byModule={byModule} incidentDates={incidentDates}
-                ciclo={ciclo} me={me} isAdmin={isAdmin} onProjectSaved={setProject} />
-              {isAdmin ? (
-                modules.length > 0 ? (
-                  <ImportWizard project={project} modules={modules} ciclo={ciclo} me={me} onDone={() => loadAll(true)} />
-                ) : (
-                  <p className="bg-white rounded-xl border border-gray-200 p-5 text-sm">
-                    El proyecto todavía no tiene módulos. Se crean con <code>sql/nuevo_proyecto.sql</code>.
-                  </p>
-                )
-              ) : (
-                <p className="bg-white rounded-xl border border-gray-200 p-5 text-sm">
-                  La importación de casos la hace el administrador del proyecto (PM de Witbor).
-                </p>
-              )}
-            </section>
+            <AdminTab project={project} modules={modules} cases={cases} byModule={byModule} incidentDates={incidentDates}
+              ciclo={ciclo} me={me} isAdmin={isAdmin} testMode={testMode}
+              onProjectSaved={setProject} onImported={() => loadAll(true)} />
           )}
         </main>
 

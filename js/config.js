@@ -11,18 +11,25 @@
   /* ---------- Paleta de marca (Manual de marca Witbor 2026) ----------
      Cada color se usa por su rol. Los cuatro colores del gradiente
      son solo acentos; el único que va en botones y links es el azul. */
+  const STOPS = ["#6ED2FF", "#3C72F8", "#9E37E6", "#F5649B"];
   const BRAND = {
     cta:    "#3C72F8",  // Azul Witbor — botón principal, links, resaltados
-    dark:   "#0A1266",  // azul oscuro — encabezado y pantalla de acceso (logo blanco)
+    dark:   "#0A1266",  // azul oscuro — encabezado y pantalla de acceso
     violet: "#672496",  // violeta — banner del modo TEST
     ink:    "#121228",  // títulos sobre fondo claro
     body:   "#5C5F66",  // texto sobre fondo claro
     soft:   "#F5F5F5",  // fondo claro
-    // Gradiente del logo (cian → azul → violeta → rosa): barras y detalles.
-    gradient: "linear-gradient(90deg, #6ED2FF 0%, #3C72F8 34%, #9E37E6 68%, #F5649B 100%)",
-    // Logos: color sobre fondo claro, blanco sobre fondo oscuro.
+    light:  "#F5F5F5",  // títulos y texto corto sobre fondo oscuro
+    lightBody: "#CCCCCC", // texto largo sobre fondo oscuro
+    line:   "#D8DAE0",  // líneas de base y de grilla
+    muted:  "#9CA3AF",  // líneas de referencia
+    danger: "#BE123C",  // cifra de incidentes abiertos
+    chart2: "#E0508A",  // segunda serie de la curva (validada junto al azul)
+    testBorder: "#F0ABFC", // borde del aviso del modo TEST
+    // Colores del gradiente del logo (cian → azul → violeta → rosa), en orden.
+    stops: STOPS,
+    // Logo de color (se usa sobre fondo claro y oscuro).
     logoColor: "img/logo-witbor-color.png",
-    logoWhite: "img/logo-witbor-blanco.png",
   };
 
   /* ---------- Conexión a Supabase ----------

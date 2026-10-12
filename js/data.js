@@ -3,7 +3,7 @@
    Los datos de cada cliente (módulos, participantes, casos) NO
    están aquí: viven en la base y se cargan tras el login.
    Publica en window.UAT: ESTADOS, ESTADO_ORDER, CRITICIDADES,
-   IMPORT_FIELDS
+   IMPORT_FIELDS, INPUT_CLS, CRIT_CHIP
    ============================================================ */
 (function () {
   /* ---------- Estados de un caso ----------
@@ -45,5 +45,9 @@
       syn: ["responsable", "usuario", "usuario clave", "owner", "tester", "ejecutor"] },
   ];
 
-  window.UAT = Object.assign(window.UAT || {}, { ESTADOS, ESTADO_ORDER, CRITICIDADES, IMPORT_FIELDS });
+  /* ---------- Estilos compartidos entre componentes ---------- */
+  const INPUT_CLS = "w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400";
+  const CRIT_CHIP = { Alta: "bg-rose-50 text-rose-700", Media: "bg-amber-50 text-amber-700", Baja: "bg-gray-100 text-gray-600" };
+
+  window.UAT = Object.assign(window.UAT || {}, { ESTADOS, ESTADO_ORDER, CRITICIDADES, IMPORT_FIELDS, INPUT_CLS, CRIT_CHIP });
 })();

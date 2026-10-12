@@ -3,6 +3,7 @@
    Depende de window.UAT: ESTADO_ORDER, IMPORT_FIELDS
    Publica en window.UAT: fmtDateTime, fmtDate, csvEscape, norm,
    dayIn, addDays, isBusinessDay, businessDays, daysBetween, fmtDia,
+   fmtFechaAsunto, moduleStatus, openIncidents, incidentRows, businessDaysLeft,
    store, stats, loadSheetJS, readWorkbook, detectHeaderRow, detectSheet,
    autoMap, buildImportRows
    ============================================================ */
@@ -50,6 +51,11 @@
     return Math.round((new Date(to + "T00:00:00Z") - new Date(from + "T00:00:00Z")) / 86400000);
   }
   const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  /* Fecha para el asunto del correo: 12-oct-2026. */
+  function fmtFechaAsunto(s) {
+    const [y, m, d] = s.split("-");
+    return `${d}-${MESES[Number(m) - 1]}-${y}`;
+  }
   function fmtDia(s) {
     if (!s) return "";
     const [, m, d] = s.split("-");
@@ -113,6 +119,25 @@
       const alerta = st.base > 0 && empezo && !completo && sinActualizar >= project.dias_alerta;
       return { m, st, last, inicio, empezo, completo, sinActualizar, alerta };
     });
+  }
+
+  /* ---------- Reglas compartidas por el tablero, los incidentes y el correo ---------- */
+  /* Incidentes abiertos: casos «Con incidente» que cuentan en el avance. */
+  const openIncidents = (cases) => cases.filter((c) => c.estado === "Con incidente" && c.validado && !c.rechazado);
+
+  /* Cada incidente abierto con su módulo y los días corridos que lleva abierto
+     (desde que el caso pasó a «Con incidente»), del más viejo al más nuevo. */
+  function incidentRows({ project, modules, cases, incidentDates, today }) {
+    return openIncidents(cases).map((c) => {
+      const desde = dayIn(project.zona_horaria, incidentDates[c.id] || c.updated_at || undefined);
+      return { c, mod: modules.find((m) => m.id === c.module_id), desde, dias: Math.max(daysBetween(desde, today), 0) };
+    }).sort((a, b) => b.dias - a.dias);
+  }
+
+  /* Días hábiles que quedan hasta el cierre de la UAT (null si no hay fecha). */
+  function businessDaysLeft(project, today) {
+    const start = project.fecha_inicio_uat, end = project.fecha_fin_uat;
+    return !end ? null : today > end ? 0 : businessDays(start && start > today ? start : today, end, project.feriados || []);
   }
 
   /* ---------- Importación: lectura del archivo ---------- */
@@ -270,7 +295,8 @@
 
   window.UAT = Object.assign(window.UAT || {}, {
     fmtDateTime, fmtDate, csvEscape, norm, store, stats,
-    dayIn, addDays, isBusinessDay, businessDays, daysBetween, fmtDia, moduleStatus,
+    dayIn, addDays, isBusinessDay, businessDays, daysBetween, fmtDia, fmtFechaAsunto, moduleStatus,
+    openIncidents, incidentRows, businessDaysLeft,
     loadSheetJS, readWorkbook, detectHeaderRow, detectSheet, autoMap, buildImportRows,
   });
 })();

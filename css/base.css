@@ -10,12 +10,11 @@
   --witbor-azul:    #3C72F8; /* también CTA, links y resaltados */
   --witbor-violeta: #9E37E6;
   --witbor-rosa:    #F5649B;
-  --witbor-gradiente: linear-gradient(90deg, #6ED2FF 0%, #3C72F8 34%, #9E37E6 68%, #F5649B 100%);
+  --witbor-gradiente: linear-gradient(90deg, var(--witbor-cian) 0%, var(--witbor-azul) 34%, var(--witbor-violeta) 68%, var(--witbor-rosa) 100%);
 
   /* ---- Fondos ---- */
   --color-bg:        #F5F5F5; /* fondo claro por defecto */
   --color-bg-oscuro: #0A1266; /* encabezado y pantalla de acceso */
-  --color-bg-violeta:#672496; /* banner "MODO TEST" */
 
   /* ---- Texto ---- */
   --color-titulo: #121228; /* títulos sobre fondo claro */

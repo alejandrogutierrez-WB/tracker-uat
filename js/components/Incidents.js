@@ -4,23 +4,18 @@
    los días que llevan abiertos (desde que el caso pasó a «Con
    incidente», según el historial).
    Depende de: React (hooks), Icon, I, BRAND, REDMINE_URL, dayIn,
-   daysBetween, fmtDate, FilterSelect
+   incidentRows, fmtDate, FilterSelect
    Publica en window.UAT: Incidents
    ============================================================ */
 (function () {
   const { useState, useMemo } = React;
-  const { Icon, I, BRAND, REDMINE_URL, dayIn, daysBetween, fmtDate, FilterSelect } = window.UAT;
+  const { Icon, I, BRAND, REDMINE_URL, dayIn, incidentRows, fmtDate, FilterSelect } = window.UAT;
 
   function Incidents({ project, modules, cases, incidentDates, onOpenModule }) {
     const [fMod, setFMod] = useState("");
     const today = dayIn(project.zona_horaria);
 
-    const rows = useMemo(() => cases
-      .filter((c) => c.estado === "Con incidente" && c.validado && !c.rechazado)
-      .map((c) => {
-        const desde = dayIn(project.zona_horaria, incidentDates[c.id] || c.updated_at || undefined);
-        return { c, mod: modules.find((m) => m.id === c.module_id), desde, dias: Math.max(daysBetween(desde, today), 0) };
-      })
+    const rows = useMemo(() => incidentRows({ project, modules, cases, incidentDates, today })
       .sort((a, b) => b.dias - a.dias || a.c.codigo.localeCompare(b.c.codigo)), [cases, modules, incidentDates, today]);
 
     const visibles = rows.filter((r) => !fMod || (r.mod && r.mod.codigo === fMod));
