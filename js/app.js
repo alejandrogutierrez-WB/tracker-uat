@@ -179,7 +179,7 @@
       .concat(modules.map((m) => ({
         id: m.id, label: m.codigo.replace(/_/g, " / "), badge: (byModule[m.id] || []).length,
         // Marca para Witbor: el módulo tiene casos agregados por aprobar.
-        alert: isWitbor && (byModule[m.id] || []).some((c) => !c.validado && !c.rechazado),
+        alert: isWitbor ? (byModule[m.id] || []).filter((c) => !c.validado && !c.rechazado).length : 0,
       })))
       .concat([{ id: "incidentes", label: "Incidentes", icon: I.Ticket, badge: incidentes }]);
     if (isWitbor) TABS.push({ id: "admin", label: "Administración", icon: I.Gear });

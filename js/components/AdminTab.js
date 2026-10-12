@@ -54,12 +54,14 @@
           </button>
         </div>
         {(totalPorAprobar > 0 || noAplica.length > 0) && (
-          <div className="bg-white rounded-xl border border-sky-300 shadow-sm p-5 space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: BRAND.ink }}>Para revisar</h2>
+          <div className="bg-white rounded-xl shadow-sm p-5 space-y-4" style={{ border: "2px solid " + BRAND.violet }}>
+            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide" style={{ color: BRAND.violet }}>
+              <Icon path={I.Warn} className="w-4 h-4" /> Para revisar
+            </h2>
             {totalPorAprobar > 0 && (
               <div>
                 <p className="flex items-center gap-2 text-sm">
-                  <span className="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0" />
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: BRAND.violet }} />
                   <strong style={{ color: BRAND.ink }}>
                     {totalPorAprobar === 1 ? "Hay 1 caso agregado por aprobar" : `Hay ${totalPorAprobar} casos agregados por aprobar`}
                   </strong>
@@ -67,7 +69,7 @@
                 <div className="mt-2 flex flex-wrap gap-2">
                   {porAprobar.map(({ m, n }) => (
                     <button key={m.id} type="button" onClick={() => onOpenModule(m.id)}
-                      className="rounded-lg border border-sky-200 bg-sky-50 text-sky-900 text-sm px-3 py-1.5 hover:bg-sky-100">
+                      className="rounded-lg text-white text-sm font-semibold px-3 py-1.5 hover:opacity-90" style={{ background: BRAND.violet }}>
                       {m.nombre} · {n}
                     </button>
                   ))}
@@ -100,7 +102,7 @@
           </div>
         )}
         <StatusEmail project={project} modules={modules} cases={cases} byModule={byModule} incidentDates={incidentDates}
-          ciclo={ciclo} me={me} isAdmin={isAdmin} onProjectSaved={onProjectSaved} />
+          ciclo={ciclo} me={me} isAdmin={isAdmin} participants={participants} onProjectSaved={onProjectSaved} />
         {isAdmin ? (
           modules.length > 0 ? (
             <ImportWizard project={project} modules={modules} ciclo={ciclo} me={me} onDone={onImported} />

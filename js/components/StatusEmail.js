@@ -130,13 +130,20 @@
   }
 
   /* ============================================================ */
-  function StatusEmail({ project, modules, cases, byModule, incidentDates, ciclo, me, isAdmin, onProjectSaved }) {
+  function StatusEmail({ project, modules, cases, byModule, incidentDates, ciclo, me, isAdmin, participants, onProjectSaved }) {
     const [dest, setDest] = useState(project.destinatarios_estatus || "");
     const [mensaje, setMensaje] = useState("");
     const [status, setStatus] = useState(null);
     const [note, setNote] = useState(null); // { ok, text }
     const [busy, setBusy] = useState(false);
     const destinatarios = parseDest(dest);
+    // El equipo Witbor va en copia: son los correos de los participantes de Witbor
+    // y cualquier otro del mismo dominio que quien envía. El resto va en «Para».
+    const dominio = (me.correo || "").split("@")[1] || "";
+    const deWitbor = new Set((participants || []).filter((p) => p.organizacion === "Witbor" && p.correo).map((p) => p.correo.toLowerCase()));
+    const esWitbor = (c) => deWitbor.has(c.toLowerCase()) || (dominio && c.toLowerCase().endsWith("@" + dominio.toLowerCase()));
+    const para = destinatarios.filter((c) => !esWitbor(c));
+    const copia = destinatarios.filter(esWitbor);
     const dirty = dest.trim() !== (project.destinatarios_estatus || "").trim();
 
     async function saveDest() {
@@ -178,15 +185,17 @@
       }
       // authuser: abre la redacción en la cuenta de quien usa la app (no en otra que esté abierta).
       const cuenta = me.correo ? "authuser=" + encodeURIComponent(me.correo) + "&" : "";
-      window.open("https://mail.google.com/mail/?" + cuenta + "view=cm&fs=1&to=" + encodeURIComponent(destinatarios.join(",")) +
+      window.open("https://mail.google.com/mail/?" + cuenta + "view=cm&fs=1&to=" + encodeURIComponent(para.join(",")) +
+        (copia.length ? "&cc=" + encodeURIComponent(copia.join(",")) : "") +
         "&su=" + encodeURIComponent(status.subject), "_blank", "noopener");
       setNote({ ok: true, text: "Estatus copiado. En la ventana de Gmail, haz clic en el cuerpo del mensaje y pega (Ctrl+V)." });
       registrar();
     }
 
     function abrirMailto() {
-      window.location.href = "mailto:" + encodeURIComponent(destinatarios.join(",")) +
-        "?subject=" + encodeURIComponent(status.subject) + "&body=" + encodeURIComponent(status.text);
+      window.location.href = "mailto:" + encodeURIComponent(para.join(",")) +
+        "?subject=" + encodeURIComponent(status.subject) + (copia.length ? "&cc=" + encodeURIComponent(copia.join(",")) : "") +
+        "&body=" + encodeURIComponent(status.text);
       registrar();
     }
 
@@ -208,7 +217,7 @@
           <textarea value={dest} onChange={(e) => setDest(e.target.value)} rows={2} readOnly={!isAdmin}
             placeholder="correo@empresa.com, otro@empresa.com" className={inputCls + " mt-1 resize-none " + (isAdmin ? "" : "bg-gray-50")} />
           <span className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-            Separados por coma. {isAdmin ? "" : "Los edita el administrador del proyecto."}
+            Separados por coma. Los del equipo Witbor van en copia (CC). {isAdmin ? "" : "Los edita el administrador del proyecto."}
             {isAdmin && dirty && (
               <button type="button" onClick={saveDest} disabled={busy} className="font-semibold underline" style={{ color: BRAND.cta }}>
                 Guardar destinatarios
@@ -233,7 +242,10 @@
             <div>
               <span className="volanta">Vista previa</span>
               <p className="text-sm mt-1"><strong style={{ color: BRAND.ink }}>Asunto:</strong> {status.subject}</p>
-              <p className="text-sm"><strong style={{ color: BRAND.ink }}>Para:</strong> {destinatarios.join(", ") || "(sin destinatarios)"}</p>
+              <p className="text-sm"><strong style={{ color: BRAND.ink }}>Para ({para.length}):</strong> {para.join(", ") || "(sin destinatarios)"}</p>
+              {copia.length > 0 && (
+                <p className="text-sm"><strong style={{ color: BRAND.ink }}>CC ({copia.length}):</strong> {copia.join(", ")}</p>
+              )}
               <div className="mt-2 border border-gray-200 rounded-lg p-4 overflow-auto max-h-[32rem] bg-white"
                 dangerouslySetInnerHTML={{ __html: status.html }} />
             </div>

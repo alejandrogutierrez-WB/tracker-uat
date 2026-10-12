@@ -93,7 +93,7 @@
               <span className="font-semibold" style={{ color: BRAND.ink }}>{c.codigo}</span>
               {c.criticidad && <span className={"rounded-full px-2 py-0.5 " + CRIT_CHIP[c.criticidad]}>{c.criticidad}</span>}
               {c.compania && <span className="text-gray-400">{c.compania}</span>}
-              {pendiente && <span className="rounded-full bg-sky-100 text-sky-800 px-2 py-0.5">Pendiente de validación</span>}
+              {pendiente && <span className="rounded-full text-white font-semibold px-2 py-0.5" style={{ background: BRAND.violet }}>Pendiente de validación</span>}
               {c.rechazado && <span className="rounded-full bg-gray-200 text-gray-600 px-2 py-0.5">Rechazado</span>}
               {c.a_revisar && <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5">A revisar: ya no viene en el archivo</span>}
             </span>
@@ -202,8 +202,8 @@
 
             {/* Validación de casos agregados (solo Witbor) */}
             {isWitbor && pendiente && !editing && (
-              <div className="mt-2 flex flex-wrap items-center gap-2 bg-sky-50 border border-sky-200 rounded-lg px-3 py-2 text-sm">
-                <span className="mr-auto text-sky-900">Agregado por {c.agregado_por || "un usuario"}. No cuenta en el avance hasta aceptarlo.</span>
+              <div className="mt-2 flex flex-wrap items-center gap-2 bg-purple-50 border border-purple-300 rounded-lg px-3 py-2 text-sm">
+                <span className="mr-auto" style={{ color: BRAND.violet }}>Agregado por {c.agregado_por || "un usuario"}. No cuenta en el avance hasta aceptarlo.</span>
                 <button type="button" disabled={busy} onClick={() => { setDraft(""); setError(""); setEditing("rechazo"); }}
                   className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">Rechazar</button>
                 <button type="button" disabled={busy} onClick={() => validate({ validado: true, rechazado: false })}

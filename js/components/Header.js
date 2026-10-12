@@ -74,7 +74,12 @@
                   style={active ? { background: BRAND.soft, color: BRAND.ink } : {}}>
                   {t.icon && <Icon path={t.icon} className="w-4 h-4" />}
                   {t.label}
-                  {t.alert && <span className="w-2 h-2 rounded-full bg-sky-400" title="Hay casos por aprobar" />}
+                  {t.alert > 0 && (
+                    <span className="text-[11px] font-bold rounded-full px-2 py-0.5 text-white whitespace-nowrap"
+                      style={{ background: BRAND.stops[2], boxShadow: "0 0 0 2px #fff" }} title="Casos agregados por aprobar">
+                      {t.alert} por aprobar
+                    </span>
+                  )}
                   {t.badge !== undefined && (
                     <span className={"text-xs rounded-full px-1.5 py-0.5 " + (active ? "bg-gray-200 text-gray-600" : "bg-white/20")}>
                       {t.badge}

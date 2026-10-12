@@ -113,10 +113,10 @@
         {/* Casos */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {porAprobar.length > 0 && (
-            <div>
-              <div className="px-3 sm:px-4 py-2 bg-sky-100 border-b border-sky-200 flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />
-                <span className="text-xs font-semibold uppercase tracking-wider text-sky-900">
+            <div style={{ borderLeft: "5px solid " + BRAND.violet, borderBottom: "2px solid " + BRAND.violet }}>
+              <div className="px-3 sm:px-4 py-2.5 flex items-center gap-2 text-white" style={{ background: BRAND.violet }}>
+                <Icon path={I.Warn} className="w-4 h-4 shrink-0" />
+                <span className="text-sm font-bold uppercase tracking-wider">
                   Por aprobar · {porAprobar.length} {porAprobar.length === 1 ? "caso agregado" : "casos agregados"}
                 </span>
               </div>
