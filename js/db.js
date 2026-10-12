@@ -6,7 +6,7 @@
    Publica en window.UAT: sb, isConfigured, getSession, sessionInfo,
    signIn, signOut, loadProject, loadModules, loadParticipants,
    loadCases, loadSnapshots, loadIncidentDates, setCaseStatus, addCase, validateCase, importCases, saveMapping,
-   subscribeProject
+   subscribeProject, setTestBackend
    ============================================================ */
 (function () {
   const { SUPABASE_URL, SUPABASE_KEY, ACCOUNT_DOMAIN } = window.UAT;
@@ -162,9 +162,22 @@
     return () => { sb.removeChannel(ch); };
   }
 
+  /* ---------- Modo TEST ----------
+     Mientras hay un "backend de prueba" activo (testmode.js), TODAS las
+     escrituras van a la memoria del navegador y ninguna llega a la base. */
+  let test = null;
+  function setTestBackend(backend) { test = backend; }
+  const write = (name, real) => (...args) => (test ? test[name](...args) : real(...args));
+
   window.UAT = Object.assign(window.UAT || {}, {
     sb, isConfigured, getSession, sessionInfo, signIn, signOut,
     loadProject, loadModules, loadParticipants, loadCases, loadSnapshots, loadIncidentDates,
-    setCaseStatus, addCase, validateCase, updateProject, importCases, saveMapping, subscribeProject,
+    setCaseStatus: write("setCaseStatus", setCaseStatus),
+    addCase: write("addCase", addCase),
+    validateCase: write("validateCase", validateCase),
+    updateProject: write("updateProject", updateProject),
+    importCases: write("importCases", importCases),
+    saveMapping: write("saveMapping", saveMapping),
+    subscribeProject, setTestBackend,
   });
 })();

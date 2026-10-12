@@ -8,7 +8,7 @@
    NameSelect, Dashboard, ModuleTab, Incidents, StatusEmail, ImportWizard,
    getSession, sessionInfo, signOut, loadProject, loadModules,
    loadParticipants, loadCases, loadSnapshots, loadIncidentDates,
-   subscribeProject
+   subscribeProject, setTestBackend, buildTestStore, makeTestBackend
    ============================================================ */
 (function () {
   const { useState, useEffect, useMemo, useCallback, useRef } = React;
@@ -17,6 +17,7 @@
     Icon, I, Logos, LockScreen, NameSelect, Dashboard, ModuleTab, Incidents, StatusEmail, ImportWizard,
     getSession, sessionInfo, signOut,
     loadProject, loadModules, loadParticipants, loadCases, loadSnapshots, loadIncidentDates, subscribeProject,
+    setTestBackend, buildTestStore, makeTestBackend,
   } = window.UAT;
 
   /* Pantalla de carga reutilizable */
@@ -97,9 +98,19 @@
     const [loadError, setLoadError] = useState("");
     const cicloRef = useRef(ciclo);
     cicloRef.current = ciclo;
+    const [testMode, setTestMode] = useState(false);
+    const testRef = useRef(null); // datos del modo TEST (en memoria); null = datos reales
+    const realRef = useRef(null); // datos reales con los que se armó la práctica
 
     /* ---------- Carga desde la base ---------- */
     const loadAll = useCallback(async (silent) => {
+      // En modo TEST no se lee la base: se muestra lo que hay en memoria.
+      if (testRef.current) {
+        const t = testRef.current;
+        setProject({ ...t.project }); setModules(t.modules); setCases(t.cases.map((x) => ({ ...x })));
+        setSnapshots(t.snapshots); setIncidentDates({ ...t.incidentDates });
+        return;
+      }
       if (!silent) setLoading(true); else setSyncing(true);
       try {
         const c = cicloRef.current;
@@ -129,6 +140,23 @@
       return () => { clearTimeout(timer); unsub(); };
     }, [loadAll]);
 
+    /* ---------- Modo TEST (práctica en memoria, no toca la base) ---------- */
+    function enterTestMode() {
+      if (!testRef.current) realRef.current = { project, modules, cases, ciclo };
+      testRef.current = buildTestStore(realRef.current);
+      setTestBackend(makeTestBackend(testRef.current, role));
+      setTestMode(true); setLoadError(""); setTab("tablero");
+      loadAll(true);
+    }
+    function exitTestMode() {
+      testRef.current = null; realRef.current = null;
+      setTestBackend(null);
+      setTestMode(false); setTab("tablero");
+      loadAll(false);
+    }
+    // Al salir de la pantalla (cambiar de persona, cerrar sesión) se apaga la práctica.
+    useEffect(() => () => { setTestBackend(null); }, []);
+
     /* Aplica en pantalla un caso guardado o agregado, sin esperar la recarga. */
     const applyLocal = useCallback((c) => {
       setCases((prev) => (prev.some((x) => x.id === c.id) ? prev.map((x) => (x.id === c.id ? c : x)) : [...prev, c]));
@@ -146,7 +174,7 @@
       }));
       const url = URL.createObjectURL(new Blob([String.fromCharCode(0xFEFF) + rows.join(String.fromCharCode(10))], { type: "text/csv;charset=utf-8" }));
       const a = document.createElement("a");
-      a.href = url; a.download = `UAT_${project.slug}_${ciclo.split(" ").join("_")}.csv`; a.click();
+      a.href = url; a.download = `UAT_${project.slug}_${ciclo.split(" ").join("_")}${testMode ? "_TEST" : ""}.csv`; a.click();
       URL.revokeObjectURL(url);
     }
 
@@ -184,7 +212,7 @@
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap text-white">
-                {project.ciclos.length > 1 && (
+                {project.ciclos.length > 1 && !testMode && (
                   <select value={ciclo} onChange={(e) => setCiclo(e.target.value)} aria-label="Ciclo de pruebas"
                     className="bg-white/15 rounded-lg px-3 py-2 text-sm text-white outline-none cursor-pointer">
                     {project.ciclos.map((c) => <option key={c} value={c} className="text-gray-800">{c}</option>)}
@@ -195,10 +223,20 @@
                   <Icon path={I.User} className="w-4 h-4 opacity-80" />
                   <span className="max-w-36 truncate">{me.nombre}</span>
                 </button>
-                <button onClick={() => loadAll(true)} title="Actualizar datos"
+                <button
+                  onClick={() => (testMode ? exitTestMode() : enterTestMode())}
+                  title={testMode ? "Salir del modo de práctica y volver a los datos reales" : "Practicar con datos ficticios sin afectar la información real"}
+                  className={"flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold tracking-wider " +
+                    (testMode ? "bg-white" : "bg-white/15 hover:bg-white/25 text-white")}
+                  style={testMode ? { color: BRAND.violet } : {}}>
+                  <Icon path={I.Flask} className="w-4 h-4" />
+                  <span>{testMode ? "SALIR TEST" : "TEST"}</span>
+                </button>
+                <button onClick={() => (testMode ? enterTestMode() : loadAll(true))}
+                  title={testMode ? "Volver a empezar la práctica" : "Actualizar datos"}
                   className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 rounded-lg px-3 py-2 text-sm">
                   <Icon path={I.Reload} className={"w-4 h-4 " + (syncing ? "animate-spin" : "")} />
-                  <span className="hidden sm:inline">Actualizar</span>
+                  <span className="hidden sm:inline">{testMode ? "Reiniciar TEST" : "Actualizar"}</span>
                 </button>
                 <button onClick={onSignOut} title="Cerrar sesión"
                   className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 rounded-lg px-3 py-2 text-sm">
@@ -230,6 +268,31 @@
           </div>
           <div className="barra-gradiente" />
         </header>
+
+        {/* Aviso del modo TEST */}
+        {testMode && (
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-white rounded-xl px-5 py-4"
+              style={{ background: BRAND.violet, border: "3px solid #F0ABFC", animation: "testPulse 2s ease-in-out infinite" }}>
+              <span className="flex items-center gap-3">
+                <span className="flex items-center justify-center rounded-full bg-white/25 p-2 shrink-0"
+                  style={{ animation: "testFlaskWiggle 1.4s ease-in-out infinite" }}>
+                  <Icon path={I.Flask} className="w-6 h-6" />
+                </span>
+                <span className="flex flex-col">
+                  <span className="text-lg font-extrabold tracking-widest uppercase leading-tight">⚠ MODO TEST ACTIVO ⚠</span>
+                  <span className="text-sm leading-tight" style={{ color: "#F5F5F5" }}>
+                    Estás practicando con datos ficticios. Nada de lo que hagas aquí se guarda ni afecta el avance real del proyecto.
+                  </span>
+                </span>
+              </span>
+              <button onClick={exitTestMode}
+                className="bg-white font-bold text-sm uppercase tracking-wider rounded-lg px-4 py-2 whitespace-nowrap" style={{ color: BRAND.violet }}>
+                Salir del TEST
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Avisos */}
         {loadError && (
