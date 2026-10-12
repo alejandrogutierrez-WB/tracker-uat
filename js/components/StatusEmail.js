@@ -176,7 +176,9 @@
         setNote({ ok: false, text: "Este navegador no permitió copiar el estatus con formato. Usa «Descargar .html», ábrelo, selecciona todo, copia y pega en el correo." });
         return;
       }
-      window.open("https://mail.google.com/mail/?view=cm&fs=1&to=" + encodeURIComponent(destinatarios.join(",")) +
+      // authuser: abre la redacción en la cuenta de quien usa la app (no en otra que esté abierta).
+      const cuenta = me.correo ? "authuser=" + encodeURIComponent(me.correo) + "&" : "";
+      window.open("https://mail.google.com/mail/?" + cuenta + "view=cm&fs=1&to=" + encodeURIComponent(destinatarios.join(",")) +
         "&su=" + encodeURIComponent(status.subject), "_blank", "noopener");
       setNote({ ok: true, text: "Estatus copiado. En la ventana de Gmail, haz clic en el cuerpo del mensaje y pega (Ctrl+V)." });
       registrar();

@@ -1,7 +1,8 @@
 /* ============================================================
    Header.js — encabezado de la app
    Logos (witbor | cliente), nombre del proyecto, selector de ciclo,
-   persona, botón TEST, Actualizar, Salir y la fila de pestañas.
+   Manual de usuario, persona, botón TEST, Actualizar, Salir y la fila
+   de pestañas (con una marca si el módulo tiene casos por aprobar).
    Depende de: React, Icon, I, BRAND, Logos
    Publica en window.UAT: Header
    ============================================================ */
@@ -30,6 +31,11 @@
                   {project.ciclos.map((c) => <option key={c} value={c} className="text-gray-800">{c}</option>)}
                 </select>
               )}
+              <a href="ayuda.html" target="_blank" rel="noopener" title="Abrir el manual de usuario"
+                className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 rounded-lg px-3 py-2 text-sm">
+                <Icon path={I.Help} className="w-4 h-4" />
+                <span className="hidden sm:inline">Manual de usuario</span>
+              </a>
               <button onClick={onChangeName} title="Cambiar de persona"
                 className="flex items-center gap-2 bg-white/15 hover:bg-white/25 rounded-lg px-3 py-2 text-sm">
                 <Icon path={I.User} className="w-4 h-4 opacity-80" />
@@ -68,6 +74,7 @@
                   style={active ? { background: BRAND.soft, color: BRAND.ink } : {}}>
                   {t.icon && <Icon path={t.icon} className="w-4 h-4" />}
                   {t.label}
+                  {t.alert && <span className="w-2 h-2 rounded-full bg-sky-400" title="Hay casos por aprobar" />}
                   {t.badge !== undefined && (
                     <span className={"text-xs rounded-full px-1.5 py-0.5 " + (active ? "bg-gray-200 text-gray-600" : "bg-white/20")}>
                       {t.badge}

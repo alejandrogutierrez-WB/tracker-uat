@@ -40,7 +40,7 @@
      cuenta y pide el nombre (se recuerda en este navegador). */
   function TrackerUAT() {
     const [phase, setPhase] = useState("checking"); // checking | locked | loading | name | ready
-    const [ctx, setCtx] = useState(null);           // { role, project, participants }
+    const [ctx, setCtx] = useState(null);           // { role, project, people, participants }
     const [me, setMe] = useState(null);
 
     const enter = useCallback(async () => {
@@ -52,7 +52,7 @@
         const org = info.role === "witbor" ? "Witbor" : "Cliente";
         const people = participants.filter((p) => p.organizacion === org);
         const saved = people.find((p) => p.id === store.get("uat.yo." + project.id));
-        setCtx({ role: info.role, project, people });
+        setCtx({ role: info.role, project, people, participants });
         setMe(saved || null);
         setPhase(saved ? "ready" : "name");
       } catch (e) {
@@ -79,12 +79,12 @@
     if (phase === "loading") return <Splash label="Cargando el proyecto…" />;
     if (phase === "locked") return <LockScreen onUnlock={enter} />;
     if (phase === "name") return <NameSelect project={ctx.project} people={ctx.people} onPick={pick} onSignOut={leave} />;
-    return <TrackerApp role={ctx.role} project={ctx.project} me={me}
+    return <TrackerApp role={ctx.role} project={ctx.project} participants={ctx.participants} me={me}
       onChangeName={() => setPhase("name")} onSignOut={leave} />;
   }
 
   /* ============================================================ */
-  function TrackerApp({ role, project: initialProject, me, onChangeName, onSignOut }) {
+  function TrackerApp({ role, project: initialProject, participants, me, onChangeName, onSignOut }) {
     const isWitbor = role === "witbor";
     const isAdmin = isWitbor && me.es_admin;
 
@@ -176,7 +176,11 @@
 
     const incidentes = openIncidents(cases).length;
     const TABS = [{ id: "tablero", label: "Tablero", icon: I.Bar }]
-      .concat(modules.map((m) => ({ id: m.id, label: m.codigo.replace(/_/g, " / "), badge: (byModule[m.id] || []).length })))
+      .concat(modules.map((m) => ({
+        id: m.id, label: m.codigo.replace(/_/g, " / "), badge: (byModule[m.id] || []).length,
+        // Marca para Witbor: el módulo tiene casos agregados por aprobar.
+        alert: isWitbor && (byModule[m.id] || []).some((c) => !c.validado && !c.rechazado),
+      })))
       .concat([{ id: "incidentes", label: "Incidentes", icon: I.Ticket, badge: incidentes }]);
     if (isWitbor) TABS.push({ id: "admin", label: "Administración", icon: I.Gear });
     const openModule = (id) => { setTab(id); window.scrollTo(0, 0); };
@@ -224,8 +228,8 @@
           {/* ADMINISTRACIÓN (solo Witbor) */}
           {tab === "admin" && isWitbor && (
             <AdminTab project={project} modules={modules} cases={cases} byModule={byModule} incidentDates={incidentDates}
-              ciclo={ciclo} me={me} isAdmin={isAdmin} testMode={testMode}
-              onProjectSaved={setProject} onImported={() => loadAll(true)} />
+              ciclo={ciclo} me={me} isAdmin={isAdmin} testMode={testMode} participants={participants}
+              onProjectSaved={setProject} onImported={() => loadAll(true)} onOpenModule={openModule} />
           )}
         </main>
 

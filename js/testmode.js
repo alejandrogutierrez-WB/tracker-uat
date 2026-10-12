@@ -105,9 +105,6 @@
         const com = comentario == null ? c.comentario : clean(comentario);
         const tk = ticket == null ? c.ticket_incidente : clean(ticket);
         if (!ESTADOS_OK.includes(e)) throw new Error("Estado no válido: " + e);
-        if (!isWitbor && e !== c.estado && (e === "No aplica" || c.estado === "No aplica")) {
-          throw new Error("Solo el equipo de Witbor puede marcar o quitar «No aplica».");
-        }
         if (e === "No aplica" && !com) throw new Error("«No aplica» requiere un comentario.");
         if (e === "Con incidente" && !tk) throw new Error("«Con incidente» requiere el número de incidente de Redmine.");
         if (e === "Con incidente" && c.estado !== e) store.incidentDates[c.id] = new Date().toISOString();

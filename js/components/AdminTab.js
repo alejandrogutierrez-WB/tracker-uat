@@ -1,15 +1,28 @@
 /* ============================================================
    AdminTab.js — pestaña Administración (solo equipo Witbor)
-   Exportar CSV, estatus por correo e importación de casos. La
-   importación la hace el administrador del proyecto (PM).
-   Depende de: React, Icon, I, csvEscape, fmtDateTime, StatusEmail,
+   Avisos de lo que hay que revisar (casos agregados por aprobar y
+   «No aplica» marcados por el cliente), exportar CSV, estatus por
+   correo e importación de casos. La importación la hace el
+   administrador del proyecto (PM).
+   Depende de: React, Icon, I, BRAND, csvEscape, fmtDateTime, StatusEmail,
    ImportWizard
    Publica en window.UAT: AdminTab
    ============================================================ */
 (function () {
-  const { Icon, I, csvEscape, fmtDateTime, StatusEmail, ImportWizard } = window.UAT;
+  const { Icon, I, BRAND, csvEscape, fmtDateTime, StatusEmail, ImportWizard } = window.UAT;
 
-  function AdminTab({ project, modules, cases, byModule, incidentDates, ciclo, me, isAdmin, testMode, onProjectSaved, onImported }) {
+  function AdminTab({
+    project, modules, cases, byModule, incidentDates, ciclo, me, isAdmin, testMode, participants,
+    onProjectSaved, onImported, onOpenModule,
+  }) {
+    /* ---------- Avisos: lo que Witbor tiene que revisar ---------- */
+    // Casos agregados por usuarios que esperan aprobación, por módulo.
+    const porAprobar = modules.map((m) => ({ m, n: (byModule[m.id] || []).filter((c) => !c.validado && !c.rechazado).length })).filter((x) => x.n > 0);
+    const totalPorAprobar = porAprobar.reduce((a, x) => a + x.n, 0);
+    // «No aplica» marcados por el cliente: salen del cálculo del avance, conviene revisarlos.
+    const delCliente = new Set((participants || []).filter((p) => p.organizacion === "Cliente").map((p) => p.nombre));
+    const noAplica = cases.filter((c) => c.estado === "No aplica" && !c.rechazado && delCliente.has(c.updated_by))
+      .map((c) => ({ c, m: modules.find((x) => x.id === c.module_id) }));
 
     /* ---------- Exportar CSV (respaldo del ciclo en pantalla) ---------- */
     function exportCSV() {
@@ -40,6 +53,52 @@
             <Icon path={I.Down} className="w-4 h-4" /> Exportar CSV
           </button>
         </div>
+        {(totalPorAprobar > 0 || noAplica.length > 0) && (
+          <div className="bg-white rounded-xl border border-sky-300 shadow-sm p-5 space-y-4">
+            <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: BRAND.ink }}>Para revisar</h2>
+            {totalPorAprobar > 0 && (
+              <div>
+                <p className="flex items-center gap-2 text-sm">
+                  <span className="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0" />
+                  <strong style={{ color: BRAND.ink }}>
+                    {totalPorAprobar === 1 ? "Hay 1 caso agregado por aprobar" : `Hay ${totalPorAprobar} casos agregados por aprobar`}
+                  </strong>
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {porAprobar.map(({ m, n }) => (
+                    <button key={m.id} type="button" onClick={() => onOpenModule(m.id)}
+                      className="rounded-lg border border-sky-200 bg-sky-50 text-sky-900 text-sm px-3 py-1.5 hover:bg-sky-100">
+                      {m.nombre} · {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {noAplica.length > 0 && (
+              <div>
+                <p className="flex items-center gap-2 text-sm">
+                  <span className="w-2.5 h-2.5 rounded-full bg-gray-400 shrink-0" />
+                  <strong style={{ color: BRAND.ink }}>
+                    {noAplica.length === 1 ? "1 caso marcado «No aplica» por el cliente" : `${noAplica.length} casos marcados «No aplica» por el cliente`}
+                  </strong>
+                  <span className="text-xs text-gray-500">— no cuentan en el avance</span>
+                </p>
+                <div className="mt-2 border border-gray-200 rounded-lg overflow-hidden">
+                  {noAplica.map(({ c, m }) => (
+                    <button key={c.id} type="button" onClick={() => m && onOpenModule(m.id)}
+                      className="w-full text-left px-3 py-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 text-sm">
+                      <span className="font-semibold" style={{ color: BRAND.ink }}>{c.codigo}</span>{" "}
+                      <span style={{ color: BRAND.ink }}>{c.caso}</span>
+                      <span className="block text-xs text-gray-500">
+                        {m ? m.nombre : ""} · {c.updated_by} · {fmtDateTime(c.updated_at)}{c.comentario ? " · «" + c.comentario + "»" : ""}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         <StatusEmail project={project} modules={modules} cases={cases} byModule={byModule} incidentDates={incidentDates}
           ciclo={ciclo} me={me} isAdmin={isAdmin} onProjectSaved={onProjectSaved} />
         {isAdmin ? (

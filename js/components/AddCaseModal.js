@@ -38,7 +38,7 @@
           <div className="px-5 py-4 space-y-3">
             {!isWitbor && (
               <p className="text-sm bg-sky-50 border border-sky-200 text-sky-900 rounded-lg px-3 py-2">
-                El caso queda pendiente hasta que el consultor de Witbor lo valide.
+                El caso queda pendiente hasta que el consultor de Witbor lo valide. Recién entonces cuenta en el avance.
               </p>
             )}
             <label className="block"><span className="volanta">Caso de prueba *</span>

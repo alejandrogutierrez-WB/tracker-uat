@@ -17,7 +17,7 @@
   };
   const ESTADO_ORDER = ["No iniciado", "En curso", "Aprobado", "Con incidente", "No aplica"];
 
-  const CRITICIDADES = ["Alta", "Media", "Baja"];
+  const CRITICIDADES = ["Urgente", "Alta", "Media", "Baja"];
 
   /* ---------- Campos de la importación ----------
      `syn` son los encabezados habituales (sin acentos, en minúsculas)
@@ -47,7 +47,7 @@
 
   /* ---------- Estilos compartidos entre componentes ---------- */
   const INPUT_CLS = "w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400";
-  const CRIT_CHIP = { Alta: "bg-rose-50 text-rose-700", Media: "bg-amber-50 text-amber-700", Baja: "bg-gray-100 text-gray-600" };
+  const CRIT_CHIP = { Urgente: "bg-rose-600 text-white", Alta: "bg-rose-50 text-rose-700", Media: "bg-amber-50 text-amber-700", Baja: "bg-gray-100 text-gray-600" };
 
   window.UAT = Object.assign(window.UAT || {}, { ESTADOS, ESTADO_ORDER, CRITICIDADES, IMPORT_FIELDS, INPUT_CLS, CRIT_CHIP });
 })();

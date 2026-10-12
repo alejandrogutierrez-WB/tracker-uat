@@ -220,7 +220,8 @@
   function normCriticidad(v) {
     const n = norm(v);
     if (!n) return "";
-    if (/^(alt|high|crit|1$|a$)/.test(n)) return "Alta";
+    if (/^(urg|crit)/.test(n)) return "Urgente";
+    if (/^(alt|high|1$|a$)/.test(n)) return "Alta";
     if (/^(med|2$|m$)/.test(n)) return "Media";
     if (/^(baj|low|3$|b$)/.test(n)) return "Baja";
     return null;

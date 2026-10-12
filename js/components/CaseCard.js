@@ -4,7 +4,7 @@
    incidente (enlace a Redmine) y, para Witbor, aceptar o rechazar
    los casos agregados por los usuarios.
    El cliente solo cambia estado, comentario e incidente (lo valida
-   la base); «No aplica» lo marca Witbor.
+   la base). «No aplica» pide siempre un comentario.
    Depende de: React (hooks), Icon, I, BRAND, ESTADOS, ESTADO_ORDER,
    INPUT_CLS, CRIT_CHIP, REDMINE_URL, fmtDateTime, setCaseStatus,
    validateCase
@@ -25,9 +25,7 @@
     const [error, setError] = useState("");
 
     const pendiente = !c.validado && !c.rechazado;
-    // El cliente no puede sacar un caso de «No aplica» (solo Witbor).
-    const locked = c.rechazado || (!isWitbor && c.estado === "No aplica");
-    const estados = ESTADO_ORDER.filter((e) => isWitbor || e !== "No aplica");
+    const locked = c.rechazado;
 
     /* Guarda en la base. null = dejar el dato como está. La pantalla
        cambia al instante y se revierte si la base rechaza el cambio. */
@@ -122,8 +120,8 @@
 
           {/* Estado: un toque */}
           <div className="md:w-[23rem]">
-            <div className={"grid gap-1 " + (estados.length === 5 ? "grid-cols-5" : "grid-cols-4")}>
-              {estados.map((e) => {
+            <div className="grid gap-1 grid-cols-5">
+              {ESTADO_ORDER.map((e) => {
                 const on = c.estado === e;
                 const s = ESTADOS[e];
                 return (
@@ -138,9 +136,6 @@
                 );
               })}
             </div>
-            {!isWitbor && c.estado === "No aplica" && (
-              <p className="mt-1 text-xs text-gray-400">Marcado «No aplica» por el equipo de Witbor.</p>
-            )}
           </div>
 
           {/* Comentario, incidente y última actualización */}

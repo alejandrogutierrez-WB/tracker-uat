@@ -25,7 +25,6 @@
     const flujos = useMemo(() => [...new Set(cases.map((c) => c.flujo).filter(Boolean))], [cases]);
     const hayCrit = cases.some((c) => c.criticidad);
     const rechazados = cases.filter((c) => c.rechazado).length;
-    const canAdd = isWitbor || me.modulos.includes(mod.codigo);
 
     const visibles = useMemo(() => {
       const nq = norm(q);
@@ -37,16 +36,20 @@
         (!nq || norm([c.codigo, c.caso, c.descripcion, c.comentario, c.ticket_incidente].join(" ")).includes(nq)));
     }, [cases, fEstado, fFlujo, fCrit, q, showRejected]);
 
+    // Para Witbor, los casos por aprobar van arriba, en su propio grupo.
+    const porAprobar = useMemo(() => (isWitbor ? visibles.filter((c) => !c.validado && !c.rechazado) : []), [visibles, isWitbor]);
+
     // Agrupa por flujo respetando el orden del archivo.
     const grupos = useMemo(() => {
       const map = new Map();
       visibles.forEach((c) => {
+        if (porAprobar.includes(c)) return;
         const k = c.flujo || "Sin flujo";
         if (!map.has(k)) map.set(k, []);
         map.get(k).push(c);
       });
       return [...map.entries()];
-    }, [visibles]);
+    }, [visibles, porAprobar]);
 
     const filtrando = fEstado || fFlujo || fCrit || q;
 
@@ -57,12 +60,10 @@
             <p className="volanta">{ciclo} · Consultor: {mod.consultor_witbor || "—"} · Responsable: {mod.responsable_nombre || "—"}</p>
             <h2 className="font-title text-2xl">{mod.nombre}</h2>
           </div>
-          {canAdd && (
-            <button onClick={() => setAdding(true)}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: BRAND.cta }}>
-              <Icon path={I.Plus} className="w-4 h-4" /> Agregar caso
-            </button>
-          )}
+          <button onClick={() => setAdding(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white rounded-lg" style={{ background: BRAND.cta }}>
+            <Icon path={I.Plus} className="w-4 h-4" /> Agregar caso
+          </button>
         </div>
 
         {/* Avance del módulo */}
@@ -111,6 +112,17 @@
 
         {/* Casos */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          {porAprobar.length > 0 && (
+            <div>
+              <div className="px-3 sm:px-4 py-2 bg-sky-100 border-b border-sky-200 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-sky-900">
+                  Por aprobar · {porAprobar.length} {porAprobar.length === 1 ? "caso agregado" : "casos agregados"}
+                </span>
+              </div>
+              {porAprobar.map((c) => <CaseCard key={c.id} c={c} isWitbor={isWitbor} me={me} onLocal={onLocal} />)}
+            </div>
+          )}
           {grupos.map(([flujo, list]) => (
             <div key={flujo}>
               <div className="px-3 sm:px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-2">
