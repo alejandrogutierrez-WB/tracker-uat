@@ -171,10 +171,10 @@
                       onClick={() => { setDraft(c.comentario || ""); setError(""); setEditing("comentario"); }}>
                       {c.comentario ? "Editar comentario" : "Agregar comentario"}
                     </button>
-                    {c.estado === "Con incidente" && (
-                      <CreateTicketLink project={project} mod={mod} c={c} />
+                    {c.estado === "Con incidente" && c.ticket_incidente && (
+                      <CreateTicketLink project={project} mod={mod} c={c} label="Crear otro ticket" />
                     )}
-                    {(c.ticket_incidente || c.estado === "Con incidente") && (
+                    {c.ticket_incidente && (
                       <button type="button" className="py-1 hover:underline"
                         onClick={() => { setDraft(c.ticket_incidente || ""); setError(""); setEditing("incidente"); }}>
                         {c.ticket_incidente ? "Cambiar n.º de ticket" : "Agregar n.º de ticket"}
@@ -185,6 +185,21 @@
                 {c.updated_by && (
                   <span className="text-xs text-gray-400 sm:ml-auto">{c.updated_by} · {fmtDateTime(c.updated_at)}</span>
                 )}
+              </div>
+            )}
+
+            {/* Incidente sin ticket: llamado bien visible a crearlo en Redmine */}
+            {c.estado === "Con incidente" && !c.ticket_incidente && !c.rechazado && !editing && (
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 bg-rose-50 border-2 border-rose-300 rounded-lg px-3 py-2.5">
+                <span className="flex items-center gap-2 text-sm font-semibold text-rose-800 mr-auto">
+                  <Icon path={I.Ticket} className="w-5 h-5 shrink-0" /> Registra el incidente en Redmine
+                </span>
+                <CreateTicketLink project={project} mod={mod} c={c} label="Crear ticket en Redmine"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-bold text-white rounded-lg shadow hover:opacity-90" />
+                <button type="button" onClick={() => { setDraft(""); setError(""); setEditing("incidente"); }}
+                  className="px-3 py-2.5 text-sm font-semibold rounded-lg border border-rose-300 bg-white text-rose-800 hover:bg-rose-100">
+                  Ya tengo el n.º de ticket
+                </button>
               </div>
             )}
 
