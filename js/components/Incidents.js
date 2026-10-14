@@ -1,15 +1,16 @@
 /* ============================================================
    Incidents.js — casos «Con incidente»
-   Lista de incidentes abiertos con su número de Redmine (enlace) y
-   los días que llevan abiertos (desde que el caso pasó a «Con
-   incidente», según el historial).
-   Depende de: React (hooks), Icon, I, BRAND, REDMINE_URL, dayIn,
-   incidentRows, fmtDate, FilterSelect
+   Lista simple de casos con incidente abierto: caso, módulo, ticket(s)
+   de Redmine y días abierto (desde que el caso pasó a «Con incidente»,
+   según el historial). Botón para crear un ticket en el proyecto de
+   Redmine. El seguimiento del ticket se hace en Redmine.
+   Depende de: React (hooks), BRAND, dayIn, incidentRows, FilterSelect,
+   TicketLinks, CreateTicketLink
    Publica en window.UAT: Incidents
    ============================================================ */
 (function () {
   const { useState, useMemo } = React;
-  const { Icon, I, BRAND, REDMINE_URL, dayIn, incidentRows, fmtDate, FilterSelect } = window.UAT;
+  const { BRAND, dayIn, incidentRows, FilterSelect, TicketLinks, CreateTicketLink } = window.UAT;
 
   function Incidents({ project, modules, cases, incidentDates, onOpenModule }) {
     const [fMod, setFMod] = useState("");
@@ -28,32 +29,34 @@
             <p className="volanta">Casos con incidente abierto</p>
             <h2 className="font-title text-2xl">Incidentes</h2>
           </div>
-          {conModulo.length > 1 && (
-            <FilterSelect value={fMod} onChange={setFMod} placeholder="Todos los módulos" options={conModulo} />
-          )}
+          <span className="flex flex-wrap items-center gap-2">
+            {conModulo.length > 1 && (
+              <FilterSelect value={fMod} onChange={setFMod} placeholder="Todos los módulos" options={conModulo} />
+            )}
+            <CreateTicketLink project={project} label="Crear ticket en Redmine"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90" />
+          </span>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {visibles.map(({ c, mod, desde, dias }) => (
-            <div key={c.id} className="px-3 sm:px-4 py-3 border-b border-gray-100 last:border-b-0 grid gap-x-4 gap-y-1 md:grid-cols-[minmax(0,1fr)_11rem_9rem] md:items-center">
+          <div className="hidden md:grid grid-cols-[minmax(0,1fr)_11rem_13rem_7rem] gap-x-4 px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs font-semibold uppercase tracking-wider" style={{ color: BRAND.ink }}>
+            <span>Caso</span><span>Módulo</span><span>Ticket</span><span className="text-right">Abierto</span>
+          </div>
+          {visibles.map(({ c, mod, dias }) => (
+            <div key={c.id} className="px-3 sm:px-4 py-3 border-b border-gray-100 last:border-b-0 grid gap-x-4 gap-y-1 md:grid-cols-[minmax(0,1fr)_11rem_13rem_7rem] md:items-center">
               <button type="button" onClick={() => mod && onOpenModule(mod.id)} className="text-left min-w-0">
-                <span className="block text-xs">
-                  <span className="font-semibold" style={{ color: BRAND.ink }}>{c.codigo}</span>
-                  <span className="text-gray-400"> · {mod ? mod.nombre : ""}{c.flujo ? " · " + c.flujo : ""}</span>
-                </span>
                 <span className="block font-medium" style={{ color: BRAND.ink }}>{c.caso}</span>
-                {c.comentario && <span className="block text-sm whitespace-pre-line">{c.comentario}</span>}
+                <span className="block text-xs text-gray-400">{c.codigo}</span>
               </button>
-              <span className="flex items-center gap-1 text-sm">
-                <Icon path={I.Ticket} className="w-4 h-4 text-rose-500 shrink-0" />
-                {/^\d+$/.test(c.ticket_incidente || "") ? (
-                  <a href={REDMINE_URL + c.ticket_incidente} target="_blank" rel="noopener noreferrer"
-                    className="underline font-medium" style={{ color: BRAND.cta }}>Incidente #{c.ticket_incidente}</a>
-                ) : <span className="font-medium">{c.ticket_incidente || "Sin número"}</span>}
+              <span className="text-sm">{mod ? mod.nombre : ""}</span>
+              <span className="text-sm">
+                {c.ticket_incidente
+                  ? <TicketLinks text={c.ticket_incidente} />
+                  : <span className="flex flex-wrap items-center gap-x-2"><span className="text-gray-400">Sin ticket</span>
+                      <CreateTicketLink project={project} mod={mod} c={c} label="Crear" /></span>}
               </span>
-              <span className="text-sm md:text-right">
-                <strong style={{ color: BRAND.ink }}>{dias === 0 ? "Hoy" : dias === 1 ? "1 día abierto" : `${dias} días abierto`}</strong>
-                <span className="block text-xs text-gray-400">desde el {fmtDate(desde)} · {c.updated_by || ""}</span>
+              <span className="text-sm md:text-right" style={{ color: BRAND.ink }}>
+                {dias === 0 ? "Hoy" : dias === 1 ? "1 día" : `${dias} días`}
               </span>
             </div>
           ))}
@@ -62,7 +65,7 @@
           )}
         </div>
         <p className="mt-2 text-xs text-gray-400">
-          El incidente se registra y se sigue en Redmine. Cuando se resuelve, el caso vuelve a «En curso» o pasa a «Aprobado» desde su módulo.
+          El incidente se registra y se sigue en Redmine; aquí solo se ve qué casos están frenados. Cuando se resuelve, el caso vuelve a «En curso» o pasa a «Aprobado» desde su módulo.
         </p>
       </section>
     );

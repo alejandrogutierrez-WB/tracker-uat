@@ -140,6 +140,31 @@
     return !end ? null : today > end ? 0 : businessDays(start && start > today ? start : today, end, project.feriados || []);
   }
 
+  /* ---------- Tickets de Redmine ---------- */
+  /* Separa el campo de ticket en partes: cada número es un enlace a Redmine;
+     el texto que no es un número se muestra tal cual. Admite «4587, 4590». */
+  function ticketParts(text) {
+    return String(text || "").split(/[\s,;/]+/).map((t) => t.trim()).filter(Boolean).map((t) => {
+      const n = t.replace(/^#/, "");
+      return /^\d+$/.test(n) ? { label: n, href: window.UAT.REDMINE_URL + n } : { label: t, href: null };
+    });
+  }
+
+  /* Formulario de alta de un ticket en el proyecto de Redmine del cliente
+     (projects.redmine_nuevo_url). Con un caso, el asunto y la descripción
+     van precargados. Sin URL configurada devuelve "". */
+  function redmineNewUrl(project, mod, c) {
+    const base = (project && project.redmine_nuevo_url) || "";
+    if (!base || !c) return base;
+    const asunto = "[" + (mod ? mod.codigo : "") + "] " + c.codigo + " — " + c.caso;
+    const desc = ["Caso de prueba: " + c.codigo + " — " + c.caso, "Módulo: " + (mod ? mod.nombre : "")];
+    if (c.flujo) desc.push("Flujo: " + c.flujo);
+    if (c.resultado_esperado) desc.push("Resultado esperado: " + c.resultado_esperado);
+    desc.push("", "Qué pasó: ");
+    return base + (base.includes("?") ? "&" : "?") +
+      "issue[subject]=" + encodeURIComponent(asunto) + "&issue[description]=" + encodeURIComponent(desc.join("\n"));
+  }
+
   /* ---------- Importación: lectura del archivo ---------- */
   let sheetJS = null;
   function loadSheetJS() {
@@ -297,7 +322,7 @@
   window.UAT = Object.assign(window.UAT || {}, {
     fmtDateTime, fmtDate, csvEscape, norm, store, stats,
     dayIn, addDays, isBusinessDay, businessDays, daysBetween, fmtDia, fmtFechaAsunto, moduleStatus,
-    openIncidents, incidentRows, businessDaysLeft,
+    openIncidents, incidentRows, businessDaysLeft, ticketParts, redmineNewUrl,
     loadSheetJS, readWorkbook, detectHeaderRow, detectSheet, autoMap, buildImportRows,
   });
 })();

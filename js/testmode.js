@@ -105,8 +105,6 @@
         const com = comentario == null ? c.comentario : clean(comentario);
         const tk = ticket == null ? c.ticket_incidente : clean(ticket);
         if (!ESTADOS_OK.includes(e)) throw new Error("Estado no válido: " + e);
-        if (e === "No aplica" && !com) throw new Error("«No aplica» requiere un comentario.");
-        if (e === "Con incidente" && !tk) throw new Error("«Con incidente» requiere el número de incidente de Redmine.");
         if (e === "Con incidente" && c.estado !== e) store.incidentDates[c.id] = new Date().toISOString();
         Object.assign(c, { estado: e, comentario: com, ticket_incidente: tk, updated_by: usuario, updated_at: new Date().toISOString() });
         return { ...c };

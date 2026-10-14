@@ -13,7 +13,7 @@
     stats, norm, FilterSelect, CaseCard, AddCaseModal,
   } = window.UAT;
 
-  function ModuleTab({ mod, cases, ciclo, isWitbor, me, onLocal }) {
+  function ModuleTab({ mod, project, cases, ciclo, isWitbor, me, onLocal }) {
     const [fEstado, setFEstado] = useState("");
     const [fFlujo, setFFlujo] = useState("");
     const [fCrit, setFCrit] = useState("");
@@ -120,7 +120,7 @@
                   Por aprobar · {porAprobar.length} {porAprobar.length === 1 ? "caso agregado" : "casos agregados"}
                 </span>
               </div>
-              {porAprobar.map((c) => <CaseCard key={c.id} c={c} isWitbor={isWitbor} me={me} onLocal={onLocal} />)}
+              {porAprobar.map((c) => <CaseCard key={c.id} c={c} mod={mod} project={project} isWitbor={isWitbor} me={me} onLocal={onLocal} />)}
             </div>
           )}
           {grupos.map(([flujo, list]) => (
@@ -131,7 +131,7 @@
                   {list.filter((c) => c.estado === "Aprobado").length}/{list.length} aprobados
                 </span>
               </div>
-              {list.map((c) => <CaseCard key={c.id} c={c} isWitbor={isWitbor} me={me} onLocal={onLocal} />)}
+              {list.map((c) => <CaseCard key={c.id} c={c} mod={mod} project={project} isWitbor={isWitbor} me={me} onLocal={onLocal} />)}
             </div>
           ))}
           {visibles.length === 0 && (

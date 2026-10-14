@@ -1,25 +1,24 @@
 /* ============================================================
    CaseCard.js — un caso de prueba dentro de la pestaña del módulo
-   Botones de estado de un toque, comentario en línea, número de
-   incidente (enlace a Redmine) y, para Witbor, aceptar o rechazar
-   los casos agregados por los usuarios.
-   El cliente solo cambia estado, comentario e incidente (lo valida
-   la base). «No aplica» pide siempre un comentario.
+   Botones de estado de un toque (ninguno pide datos), comentario en
+   línea, ticket(s) de Redmine opcionales con enlace para crear uno y,
+   para Witbor, aceptar o rechazar los casos agregados por usuarios.
+   El cliente solo cambia estado, comentario y ticket (lo valida la base).
    Depende de: React (hooks), Icon, I, BRAND, ESTADOS, ESTADO_ORDER,
-   INPUT_CLS, CRIT_CHIP, REDMINE_URL, fmtDateTime, setCaseStatus,
-   validateCase
+   INPUT_CLS, CRIT_CHIP, fmtDateTime, setCaseStatus, validateCase,
+   TicketLinks, CreateTicketLink
    Publica en window.UAT: CaseCard
    ============================================================ */
 (function () {
   const { useState } = React;
   const {
-    Icon, I, BRAND, ESTADOS, ESTADO_ORDER, INPUT_CLS, CRIT_CHIP, REDMINE_URL,
-    fmtDateTime, setCaseStatus, validateCase,
+    Icon, I, BRAND, ESTADOS, ESTADO_ORDER, INPUT_CLS, CRIT_CHIP,
+    fmtDateTime, setCaseStatus, validateCase, TicketLinks, CreateTicketLink,
   } = window.UAT;
 
-  function CaseCard({ c, isWitbor, me, onLocal }) {
+  function CaseCard({ c, mod, project, isWitbor, me, onLocal }) {
     const [open, setOpen] = useState(false);
-    const [editing, setEditing] = useState(null); // null | comentario | incidente | noaplica | rechazo
+    const [editing, setEditing] = useState(null); // null | comentario | incidente | rechazo
     const [draft, setDraft] = useState("");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
@@ -49,21 +48,15 @@
     function pick(e) {
       if (busy || locked || e === c.estado) return;
       setError("");
-      if (e === "Con incidente" && !c.ticket_incidente) { setDraft(""); setEditing("incidente"); return; }
-      if (e === "No aplica" && !c.comentario) { setDraft(""); setEditing("noaplica"); return; }
       save({ estado: e });
     }
 
     function confirmEdit() {
       const v = draft.trim();
       if (editing === "incidente") {
-        if (!v) { setError("Escribe el número de incidente de Redmine."); return; }
-        save(c.estado === "Con incidente" ? { ticket: v } : { estado: "Con incidente", ticket: v });
-      } else if (editing === "noaplica") {
-        if (!v) { setError("«No aplica» requiere un comentario."); return; }
-        save({ estado: "No aplica", comentario: v });
+        // Vacío = quitar el número; el ticket es opcional.
+        save({ ticket: v });
       } else if (editing === "comentario") {
-        if (!v && c.estado === "No aplica") { setError("«No aplica» requiere un comentario."); return; }
         save({ comentario: v });
       } else if (editing === "rechazo") {
         if (!v) { setError("Indica el motivo del rechazo."); return; }
@@ -79,7 +72,7 @@
     }
 
     const editLabel = {
-      incidente: "Número de incidente en Redmine", noaplica: "¿Por qué no aplica?",
+      incidente: "Número(s) de ticket en Redmine (opcional; varios separados por coma)",
       comentario: "Comentario", rechazo: "Motivo del rechazo",
     }[editing];
 
@@ -144,10 +137,10 @@
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-2.5">
                 <label className="volanta block mb-1">{editLabel}</label>
                 {editing === "incidente" ? (
-                  <input type="text" inputMode="numeric" value={draft} autoFocus
+                  <input type="text" value={draft} autoFocus
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") confirmEdit(); }}
-                    placeholder="Ej. 45872" className={INPUT_CLS} />
+                    placeholder="Ej. 45872 o 45872, 45890" className={INPUT_CLS} />
                 ) : (
                   <textarea value={draft} autoFocus rows={2} onChange={(e) => setDraft(e.target.value)}
                     placeholder={editing === "comentario" ? "Qué probaste, qué pasó, qué falta…" : ""}
@@ -171,25 +164,20 @@
                     <span className="whitespace-pre-line">{c.comentario}</span>
                   </span>
                 )}
-                {c.ticket_incidente && (
-                  <span className="flex items-center gap-1 whitespace-nowrap">
-                    <Icon path={I.Ticket} className="w-4 h-4 text-rose-500" />
-                    {/^\d+$/.test(c.ticket_incidente) ? (
-                      <a href={REDMINE_URL + c.ticket_incidente} target="_blank" rel="noopener noreferrer"
-                        className="underline font-medium" style={{ color: BRAND.cta }}>Incidente #{c.ticket_incidente}</a>
-                    ) : <span className="font-medium">Incidente {c.ticket_incidente}</span>}
-                  </span>
-                )}
+                {c.ticket_incidente && <TicketLinks text={c.ticket_incidente} />}
                 {!c.rechazado && (
                   <span className="flex items-center gap-3 text-xs" style={{ color: BRAND.cta }}>
                     <button type="button" className="py-1 hover:underline"
                       onClick={() => { setDraft(c.comentario || ""); setError(""); setEditing("comentario"); }}>
                       {c.comentario ? "Editar comentario" : "Agregar comentario"}
                     </button>
+                    {c.estado === "Con incidente" && (
+                      <CreateTicketLink project={project} mod={mod} c={c} />
+                    )}
                     {(c.ticket_incidente || c.estado === "Con incidente") && (
                       <button type="button" className="py-1 hover:underline"
                         onClick={() => { setDraft(c.ticket_incidente || ""); setError(""); setEditing("incidente"); }}>
-                        Cambiar incidente
+                        {c.ticket_incidente ? "Cambiar n.º de ticket" : "Agregar n.º de ticket"}
                       </button>
                     )}
                   </span>

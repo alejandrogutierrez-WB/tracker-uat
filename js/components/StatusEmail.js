@@ -6,7 +6,7 @@
    con destinatarios y asunto cargados: el PM pega y envía.
    Alternativas: cliente de correo (mailto, texto plano) y descarga
    del cuerpo en .html.
-   Depende de: React (hooks), Icon, I, BRAND, INPUT_CLS, REDMINE_URL,
+   Depende de: React (hooks), Icon, I, BRAND, INPUT_CLS, ticketParts,
    APP_URL, stats, moduleStatus, incidentRows, businessDaysLeft, dayIn,
    fmtDate, fmtDateTime, fmtFechaAsunto, updateProject
    Publica en window.UAT: StatusEmail
@@ -14,7 +14,7 @@
 (function () {
   const { useState } = React;
   const {
-    Icon, I, BRAND, INPUT_CLS, REDMINE_URL, APP_URL, stats, moduleStatus, incidentRows, businessDaysLeft,
+    Icon, I, BRAND, INPUT_CLS, APP_URL, ticketParts, stats, moduleStatus, incidentRows, businessDaysLeft,
     dayIn, fmtDate, fmtDateTime, fmtFechaAsunto, updateProject,
   } = window.UAT;
 
@@ -97,11 +97,11 @@
     html += `<p style="${h3}">Incidentes abiertos</p>`;
     html += incidentes.length
       ? `<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid ${C.border};">` +
-        `<tr><th style="${th}">Módulo</th><th style="${th}">Caso</th><th style="${th}">Incidente</th><th style="${th}text-align:right;">Días abierto</th></tr>` +
+        `<tr><th style="${th}">Módulo</th><th style="${th}">Caso</th><th style="${th}">Ticket</th><th style="${th}text-align:right;">Días abierto</th></tr>` +
         incidentes.map(({ c, mod, dias }) => `<tr><td style="${td}">${esc(mod ? mod.nombre : "")}</td>` +
           `<td style="${td}"><span style="color:${C.ink};font-weight:bold;">${esc(c.codigo)}</span> ${esc(c.caso)}</td>` +
-          `<td style="${td}white-space:nowrap;">${/^\d+$/.test(c.ticket_incidente || "")
-            ? `<a href="${esc(REDMINE_URL + c.ticket_incidente)}" style="color:${C.cta};">#${esc(c.ticket_incidente)}</a>` : esc(c.ticket_incidente || "—")}</td>` +
+          `<td style="${td}">${ticketParts(c.ticket_incidente).map((p) => (p.href
+            ? `<a href="${esc(p.href)}" style="color:${C.cta};">#${esc(p.label)}</a>` : esc(p.label))).join(", ") || "Sin ticket"}</td>` +
           `<td style="${td}${num}">${dias}</td></tr>`).join("") + `</table>`
       : `<p style="${F}font-size:13px;color:${C.body};margin:0;">No hay incidentes abiertos.</p>`;
 
@@ -122,7 +122,7 @@
     if (alertas.length) alertas.forEach((r) => L.push(`- ${r.m.responsable_nombre || "Sin responsable"} — ${r.m.nombre} (${r.sinActualizar} días hábiles)`));
     else L.push("Todos los módulos en pruebas están al día.");
     L.push("", "INCIDENTES ABIERTOS");
-    if (incidentes.length) incidentes.forEach(({ c, mod, dias }) => L.push(`- ${c.codigo} ${c.caso} (${mod ? mod.nombre : ""}) · incidente ${c.ticket_incidente || "—"} · ${dias} días`));
+    if (incidentes.length) incidentes.forEach(({ c, mod, dias }) => L.push(`- ${c.codigo} ${c.caso} (${mod ? mod.nombre : ""}) · ticket ${c.ticket_incidente || "sin número"} · ${dias} días`));
     else L.push("No hay incidentes abiertos.");
     L.push("", "Tracker de UAT: " + url);
 

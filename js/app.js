@@ -222,7 +222,7 @@
 
           {/* PESTAÑA DE MÓDULO */}
           {mod && (
-            <ModuleTab key={mod.id} mod={mod} cases={modCases} ciclo={ciclo} isWitbor={isWitbor} me={me} onLocal={applyLocal} />
+            <ModuleTab key={mod.id} mod={mod} project={project} cases={modCases} ciclo={ciclo} isWitbor={isWitbor} me={me} onLocal={applyLocal} />
           )}
 
           {/* ADMINISTRACIÓN (solo Witbor) */}
