@@ -1,22 +1,28 @@
 /* ============================================================
    Dashboard.js — tablero de la UAT
-   Tarjetas (% avance, % ejecutado, incidentes abiertos, días
-   hábiles restantes), avance por módulo con su responsable, su
-   última actualización y la alerta de "sin actualizar", y la curva
-   de avance diario (fotos de daily_snapshots + el día de hoy en vivo).
-   Depende de: React (hooks), Icon, I, BRAND, ESTADOS, stats, moduleStatus, dayIn,
-   addDays, businessDaysLeft, fmtDia, fmtDate, fmtDateTime
+   Tarjetas (% aprobados, % ejecutado, planificado a hoy, incidentes
+   abiertos, días hábiles restantes), status de avance en cantidad de
+   casos, avance por módulo con su responsable, su última actualización
+   y la alerta de "sin actualizar", y la curva real vs. planificado en
+   cantidad de casos (fotos de daily_snapshots + el día de hoy en vivo).
+   Depende de: React (hooks), Icon, I, BRAND, ESTADOS, stats, moduleStatus,
+   plannedAt, dayIn, addDays, businessDaysLeft, fmtDia, fmtDate, fmtDateTime
    Publica en window.UAT: Dashboard
    ============================================================ */
 (function () {
   const { useState, useMemo } = React;
-  const { Icon, I, BRAND, ESTADOS, stats, moduleStatus, businessDaysLeft, dayIn, addDays, fmtDia, fmtDate, fmtDateTime } = window.UAT;
+  const {
+    Icon, I, BRAND, ESTADOS, stats, moduleStatus, plannedAt, businessDaysLeft,
+    dayIn, addDays, fmtDia, fmtDate, fmtDateTime,
+  } = window.UAT;
 
-  /* Colores de las dos series de la curva (validados para daltonismo y
-     contraste). El texto nunca va en el color de la serie. */
+  /* Series de la curva. Ejecutados y aprobados usan el par de colores
+     validado para daltonismo; el planificado es la línea de referencia
+     (gris, punteada). El texto nunca va en el color de la serie. */
   const SERIES = [
-    { id: "avance",    label: "% avance",    color: BRAND.cta },
-    { id: "ejecutado", label: "% ejecutado", color: BRAND.chart2 },
+    { id: "planificado", label: "Planificado", color: BRAND.muted, dash: "5 5" },
+    { id: "ejecutados",  label: "Ejecutados",  color: BRAND.chart2 },
+    { id: "aprobado",    label: "Aprobados",   color: BRAND.cta },
   ];
   const GRID = BRAND.line;
 
@@ -43,22 +49,67 @@
     );
   }
 
-  /* ---------- Curva de avance diario ---------- */
-  function ProgressChart({ points, start, end, today }) {
+  /* Status de avance en cantidad de casos (porcentajes sobre el total sin «No aplica»). */
+  function StatusRow({ g }) {
+    const cols = [
+      { label: "Total de casos", n: g.base, nota: g.by["No aplica"] ? `${g.by["No aplica"]} no aplican` : "" },
+      { label: "Ejecutados", n: g.ejecutados, pct: g.ejecutado, nota: "OK + NO OK" },
+      { label: "Pendientes de ejecución", n: g.porEjecutar, pct: g.pct(g.porEjecutar) },
+      { label: "OK (aprobados)", n: g.by["Aprobado"], pct: g.avance, dot: ESTADOS["Aprobado"].dot },
+      { label: "NO OK (con incidente)", n: g.by["Con incidente"], pct: g.pct(g.by["Con incidente"]), dot: ESTADOS["Con incidente"].dot },
+      { label: "En proceso", n: g.by["En curso"], pct: g.pct(g.by["En curso"]), dot: ESTADOS["En curso"].dot },
+    ];
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100">
+          <h3 className="font-title text-base">Status de avance</h3>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+          {cols.map((c) => (
+            <div key={c.label} className="px-4 py-3 border-b lg:border-b-0 border-r border-gray-100 last:border-r-0">
+              <p className="flex items-center gap-1.5 text-xs text-gray-500">
+                {c.dot && <span className={"w-2.5 h-2.5 rounded-full " + c.dot} />}{c.label}
+              </p>
+              <p className="mt-0.5">
+                <strong className="font-title text-2xl" style={{ color: BRAND.ink }}>{c.n}</strong>
+                {c.pct !== undefined && <span className="text-sm text-gray-500"> · {c.pct}%</span>}
+              </p>
+              {c.nota && <p className="text-xs text-gray-400">{c.nota}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  /* Escala del eje Y en cantidad de casos: un tope "redondo" y 4 divisiones. */
+  function niceMax(v) {
+    if (v <= 4) return 4;
+    // Cuatro divisiones con un paso «redondo» (sin decimales: son casos).
+    const paso = Math.pow(10, Math.floor(Math.log10(v / 4)));
+    const pasos = (paso >= 10 ? [1, 2, 2.5, 3, 5, 10] : [1, 2, 3, 5, 10]).map((k) => k * paso);
+    return (pasos.find((p) => p * 4 >= v) || Math.ceil(v / 4)) * 4;
+  }
+
+  /* ---------- Curva: real vs. planificado (cantidad de casos) ---------- */
+  function ProgressChart({ points, plan, start, end, today, maxCasos }) {
     const [hover, setHover] = useState(null);
-    const W = 720, H = 260, L = 40, R = 86, T = 14, B = 30;
+    const W = 720, H = 260, L = 44, R = 96, T = 14, B = 30;
 
     // Eje X: toda la ventana de la UAT, ampliada si hay datos fuera de ella.
     const first = [start, points[0] && points[0].fecha].filter(Boolean).sort()[0];
     const last = [end, points.length && points[points.length - 1].fecha].filter(Boolean).sort().pop();
     const days = [];
     for (let d = first; d <= last; d = addDays(d, 1)) days.push(d);
+    const top = niceMax(maxCasos);
     const x = (d) => L + (days.length > 1 ? (days.indexOf(d) / (days.length - 1)) * (W - L - R) : 0);
-    const y = (v) => T + (1 - v / 100) * (H - T - B);
+    const y = (v) => T + (1 - v / top) * (H - T - B);
     // Marcas del eje: cada lunes, más el primer día si no queda pegado a un lunes.
     const lunes = days.filter((d) => new Date(d + "T00:00:00Z").getUTCDay() === 1);
     const ticks = !lunes.length || days.indexOf(lunes[0]) > 3 ? [days[0]].concat(lunes) : lunes;
     const lastPt = points[points.length - 1];
+    const planDias = days.map((d) => ({ fecha: d, planificado: plan(d) }));
+    const planFin = planDias[planDias.length - 1];
 
     function onMove(ev) {
       const box = ev.currentTarget.getBoundingClientRect();
@@ -68,11 +119,13 @@
       setHover(best);
     }
 
-    // Etiquetas al final de cada línea, separadas si quedan encimadas.
-    const labels = lastPt ? SERIES.map((s) => ({ ...s, v: lastPt[s.id], ly: y(lastPt[s.id]) })).sort((a, b) => a.ly - b.ly) : [];
-    if (labels.length === 2 && labels[1].ly - labels[0].ly < 14) {
-      const mid = (labels[0].ly + labels[1].ly) / 2;
-      labels[0].ly = mid - 7; labels[1].ly = mid + 7;
+    // Etiquetas al final de cada serie real (y del planificado al cierre), separadas si se enciman.
+    const labels = [];
+    if (lastPt) {
+      labels.push({ id: "ejecutados", x: x(lastPt.fecha), ly: y(lastPt.ejecutados), text: `${lastPt.ejecutados} ejecutados` });
+      labels.push({ id: "aprobado", x: x(lastPt.fecha), ly: y(lastPt.aprobado), text: `${lastPt.aprobado} aprobados` });
+      labels.sort((a, b) => a.ly - b.ly);
+      if (labels[1].ly - labels[0].ly < 14) { const mid = (labels[0].ly + labels[1].ly) / 2; labels[0].ly = mid - 7; labels[1].ly = mid + 7; }
     }
 
     return (
@@ -80,34 +133,35 @@
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs mb-2">
           {SERIES.map((s) => (
             <span key={s.id} className="flex items-center gap-1.5">
-              <span className="w-4 h-0.5 rounded" style={{ background: s.color }} />{s.label}
+              {s.dash ? <span className="w-4 border-t-2 border-dashed border-gray-400" />
+                : <span className="w-4 h-0.5 rounded" style={{ background: s.color }} />}
+              {s.label}
             </span>
           ))}
-          {start && end && (
-            <span className="flex items-center gap-1.5">
-              <span className="w-4 border-t-2 border-dashed border-gray-400" />Ritmo lineal hasta el cierre
-            </span>
-          )}
         </div>
         <div className="relative">
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img"
-            aria-label="Curva de avance diario de la UAT" onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
-            {[0, 25, 50, 75, 100].map((v) => (
-              <g key={v}>
-                <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke={GRID} strokeWidth="1" />
-                <text x={L - 6} y={y(v) + 4} textAnchor="end" fontSize="11" fill={BRAND.body}>{v}%</text>
+            aria-label="Curva de casos aprobados y ejecutados frente al planificado" onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+            {[0, 0.25, 0.5, 0.75, 1].map((k) => (
+              <g key={k}>
+                <line x1={L} x2={W - R} y1={y(top * k)} y2={y(top * k)} stroke={GRID} strokeWidth="1" />
+                <text x={L - 6} y={y(top * k) + 4} textAnchor="end" fontSize="11" fill={BRAND.body}>{Math.round(top * k)}</text>
               </g>
             ))}
             {ticks.map((d) => (
               <text key={d} x={x(d)} y={H - 8} textAnchor="middle" fontSize="11" fill={BRAND.body}>{fmtDia(d)}</text>
             ))}
-            {start && end && (
-              <line x1={x(start)} y1={y(0)} x2={x(end)} y2={y(100)} stroke={BRAND.muted} strokeWidth="1.5" strokeDasharray="5 5" />
-            )}
             {today >= first && today <= last && (
               <line x1={x(today)} x2={x(today)} y1={T} y2={H - B} stroke={GRID} strokeWidth="1" strokeDasharray="2 3" />
             )}
-            {SERIES.map((s) => (
+            {/* Planificado: toda la ventana de la UAT */}
+            <polyline fill="none" stroke={BRAND.muted} strokeWidth="1.5" strokeDasharray="5 5"
+              points={planDias.map((p) => `${x(p.fecha)},${y(p.planificado)}`).join(" ")} />
+            {planFin && (
+              <text x={x(planFin.fecha) + 6} y={y(planFin.planificado) + 4} fontSize="11" fill={BRAND.body}>{planFin.planificado} plan.</text>
+            )}
+            {/* Real: ejecutados y aprobados */}
+            {SERIES.filter((s) => !s.dash).map((s) => (
               <g key={s.id}>
                 {points.length > 1 && (
                   <polyline fill="none" stroke={s.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"
@@ -116,10 +170,8 @@
                 {lastPt && <circle cx={x(lastPt.fecha)} cy={y(lastPt[s.id])} r="4" fill={s.color} stroke="#fff" strokeWidth="2" />}
               </g>
             ))}
-            {labels.map((s) => (
-              <text key={s.id} x={x(lastPt.fecha) + 9} y={s.ly + 4} fontSize="11" fill={BRAND.ink}>
-                {s.v}% {s.id}
-              </text>
+            {labels.map((l) => (
+              <text key={l.id} x={l.x + 9} y={l.ly + 4} fontSize="11" fill={BRAND.ink}>{l.text}</text>
             ))}
             {hover && (
               <g>
@@ -135,21 +187,24 @@
               {SERIES.map((s) => (
                 <p key={s.id} className="flex items-center gap-1.5 whitespace-nowrap">
                   <span className="w-2 h-2 rounded-full" style={{ background: s.color }} />
-                  {s.label}: <strong style={{ color: BRAND.ink }}>{hover[s.id]}%</strong>
+                  {s.label}: <strong style={{ color: BRAND.ink }}>{hover[s.id]}</strong>
                 </p>
               ))}
-              <p className="text-gray-400">{hover.aprobado} aprobados de {hover.base}</p>
+              <p className="text-gray-400">
+                {hover.aprobado >= hover.planificado ? "Al día con el plan" : `Atraso: ${hover.planificado - hover.aprobado} casos`}
+              </p>
             </div>
           )}
         </div>
         <details className="mt-2 text-xs">
           <summary className="cursor-pointer" style={{ color: BRAND.cta }}>Ver los datos en tabla</summary>
-          <table className="mt-2 w-full max-w-md">
-            <thead><tr className="text-left volanta"><th className="py-1">Fecha</th><th>% avance</th><th>% ejecutado</th><th>Aprobados</th></tr></thead>
+          <table className="mt-2 w-full max-w-lg">
+            <thead><tr className="text-left volanta"><th className="py-1">Fecha</th><th>Planificado</th><th>Ejecutados</th><th>Aprobados</th><th>Atraso</th></tr></thead>
             <tbody>
               {points.map((p) => (
                 <tr key={p.fecha} className="border-t border-gray-100">
-                  <td className="py-1">{fmtDate(p.fecha)}</td><td>{p.avance}%</td><td>{p.ejecutado}%</td><td>{p.aprobado} de {p.base}</td>
+                  <td className="py-1">{fmtDate(p.fecha)}</td><td>{p.planificado}</td><td>{p.ejecutados}</td><td>{p.aprobado}</td>
+                  <td>{Math.max(p.planificado - p.aprobado, 0)}</td>
                 </tr>
               ))}
             </tbody>
@@ -168,28 +223,34 @@
     const restantes = businessDaysLeft(project, today);
     const fase = !start || !end ? "" : today < start ? `Empieza el ${fmtDate(start)}` : today > end ? `Terminó el ${fmtDate(end)}` : `Cierra el ${fmtDate(end)}`;
 
+    /* Planificado: casos que deberían estar aprobados a cada fecha. */
+    const plan = useMemo(() => {
+      const memo = {};
+      return (fecha) => (memo[fecha] !== undefined ? memo[fecha] : (memo[fecha] = plannedAt(project, modules, byModule, fecha)));
+    }, [project, modules, byModule]);
+    const planHoy = plan(today);
+    const atraso = planHoy - general.by["Aprobado"];
+
     /* Por módulo: avance, última actualización y alerta de inactividad. */
     const rows = useMemo(() => moduleStatus(project, modules, byModule, today), [project, modules, byModule, today]);
 
     const alertas = rows.filter((r) => r.alerta);
 
-    /* Curva: una foto por día (suma de módulos) y el día de hoy en vivo. */
+    /* Curva: una foto por día (suma de módulos) y el día de hoy en vivo, en cantidad de casos. */
     const points = useMemo(() => {
       const byDay = {};
       snapshots.forEach((s) => {
-        const d = byDay[s.fecha] || (byDay[s.fecha] = { total: 0, na: 0, aprobado: 0, curso: 0, inc: 0 });
-        d.total += s.total; d.na += s.no_aplica; d.aprobado += s.aprobado; d.curso += s.en_curso; d.inc += s.con_incidente;
+        const d = byDay[s.fecha] || (byDay[s.fecha] = { aprobado: 0, inc: 0 });
+        d.aprobado += s.aprobado; d.inc += s.con_incidente;
       });
-      const pts = Object.keys(byDay).sort().filter((f) => f < today).map((fecha) => {
-        const d = byDay[fecha]; const base = d.total - d.na;
-        const pct = (n) => (base > 0 ? Math.round((n / base) * 100) : 0);
-        return { fecha, base, aprobado: d.aprobado, avance: pct(d.aprobado), ejecutado: pct(d.aprobado + d.curso + d.inc) };
-      });
+      const pts = Object.keys(byDay).sort().filter((f) => f < today && (!start || f >= start)).map((fecha) => ({
+        fecha, aprobado: byDay[fecha].aprobado, ejecutados: byDay[fecha].aprobado + byDay[fecha].inc, planificado: plan(fecha),
+      }));
       if (!start || today >= start) {
-        pts.push({ fecha: today, base: general.base, aprobado: general.by["Aprobado"], avance: general.avance, ejecutado: general.ejecutado });
+        pts.push({ fecha: today, aprobado: general.by["Aprobado"], ejecutados: general.ejecutados, planificado: planHoy });
       }
       return pts;
-    }, [snapshots, general, today]);
+    }, [snapshots, general, today, plan]);
 
     return (
       <section className="space-y-5">
@@ -198,13 +259,20 @@
           <h2 className="font-title text-2xl">Avance de la UAT</h2>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Tile label="Avance" value={general.avance + "%"} note={`${general.by["Aprobado"]} de ${general.base} casos aprobados`} />
-          <Tile label="Ejecutado" value={general.ejecutado + "%"} note="En curso, aprobados o con incidente" />
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <Tile label="Casos aprobados" value={general.avance + "%"} note={`${general.by["Aprobado"]} de ${general.base} casos`} />
+          <Tile label="Ejecutado" value={general.ejecutado + "%"} note={`${general.ejecutados} casos terminados (OK + NO OK)`} />
+          <Tile label="Planificado a hoy" value={planHoy}
+            note={today < (start || today) ? "La UAT todavía no empieza"
+              : atraso > 0 ? `Aprobados: ${general.by["Aprobado"]} · atraso de ${atraso} casos`
+              : `Aprobados: ${general.by["Aprobado"]} · al día con el plan`}
+            tone={atraso > 0 ? BRAND.danger : undefined} />
           <Tile label="Incidentes abiertos" value={general.by["Con incidente"]} note="Ver el detalle"
             onClick={onOpenIncidents} tone={general.by["Con incidente"] > 0 ? BRAND.danger : undefined} />
           <Tile label="Días hábiles restantes" value={restantes === null ? "—" : restantes} note={fase} />
         </div>
+
+        <StatusRow g={general} />
 
         {alertas.length > 0 && (
           <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 text-amber-900 text-sm rounded-xl px-4 py-3">
@@ -235,7 +303,7 @@
               </span>
               <span>
                 <span className="flex items-baseline justify-between text-xs mb-1">
-                  <span><strong className="text-sm" style={{ color: BRAND.ink }}>{st.avance}%</strong> avance · {st.ejecutado}% ejecutado</span>
+                  <span><strong className="text-sm" style={{ color: BRAND.ink }}>{st.avance}%</strong> aprobados · {st.ejecutado}% ejecutado</span>
                   <span className="text-gray-400">{st.by["Aprobado"]}/{st.base}</span>
                 </span>
                 <StackBar st={st} />
@@ -246,7 +314,7 @@
                   : !empezo ? <span className="text-gray-400">{inicio ? `Empieza el ${fmtDate(inicio)}` : "Sin fecha de inicio"}</span>
                   : (
                     <>
-                      <span className="block text-gray-500">{last ? `${last.updated_by} · ${fmtDateTime(last.updated_at)}` : "Nadie actualizó todavía"}</span>
+                      <span className="block text-gray-500">{last ? `${last.updated_by} · ${fmtDateTime(last.updated_at)}` : inicio ? `Empezó el ${fmtDate(inicio)} · nadie actualizó todavía` : "Nadie actualizó todavía"}</span>
                       {alerta && (
                         <span className="inline-flex items-center gap-1 mt-0.5 rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 font-medium">
                           <Icon path={I.Warn} className="w-3 h-3" /> {sinActualizar} días hábiles sin actualizar
@@ -259,15 +327,19 @@
           ))}
         </div>
 
-        {/* Curva de avance diario */}
+        {/* Curva real vs. planificado */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-          <h3 className="font-title text-base mb-2">Avance diario</h3>
+          <h3 className="font-title text-base">Avance real vs. planificado</h3>
+          <p className="text-xs text-gray-500 mb-2">
+            En cantidad de casos. El planificado reparte los casos de cada módulo en partes iguales entre los días hábiles desde su inicio hasta el cierre.
+          </p>
           {points.length === 0 ? (
             <p className="text-sm text-gray-500 py-6 text-center">
               La curva empieza el {fmtDate(start)}, con el inicio de la UAT. Se guarda una foto del avance al cierre de cada día.
             </p>
           ) : (
-            <ProgressChart points={points} start={start} end={end} today={today} />
+            <ProgressChart points={points} plan={plan} start={start} end={end} today={today}
+              maxCasos={Math.max(general.base, plan(end || today), 1)} />
           )}
         </div>
 

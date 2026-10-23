@@ -77,9 +77,11 @@
   };
 
   /* ---------- Avance ----------
-     Solo cuentan los casos validados y no rechazados.
-     % avance    = Aprobados / (Total − No aplica)
-     % ejecutado = (En curso + Aprobado + Con incidente) / (Total − No aplica) */
+     Solo cuentan los casos validados y no rechazados; «No aplica» sale del total.
+     % aprobados = Aprobados / (Total − No aplica)            (clave: avance)
+     % ejecutado = (Aprobado + Con incidente) / (Total − No aplica)
+       Ejecutado = caso terminado: OK (aprobado) o NO OK (con incidente).
+       «En curso» es «en proceso»: todavía no cuenta como ejecutado. */
   function stats(cases) {
     const by = {};
     ESTADO_ORDER.forEach((e) => { by[e] = 0; });
@@ -91,11 +93,35 @@
     });
     const base = total - by["No aplica"];
     const pct = (n) => (base > 0 ? Math.round((n / base) * 100) : 0);
+    const ejecutados = by["Aprobado"] + by["Con incidente"];
     return {
       total, base, by, pendientes,
+      ejecutados, porEjecutar: base - ejecutados, pct,
       avance: pct(by["Aprobado"]),
-      ejecutado: pct(by["En curso"] + by["Aprobado"] + by["Con incidente"]),
+      ejecutado: pct(ejecutados),
     };
+  }
+
+  /* ---------- Planificado ----------
+     Casos que deberían estar aprobados a una fecha. Por módulo: su total
+     (sin «No aplica») repartido en partes iguales entre los días hábiles
+     que van desde el inicio de sus pruebas hasta el cierre de la UAT,
+     contando el día de inicio. Antes del inicio del módulo, 0. Se suman
+     los módulos. Ej.: 10 casos en 10 días hábiles → el día 2, 2 casos. */
+  function plannedAt(project, modules, byModule, fecha) {
+    const fin = project.fecha_fin_uat, feriados = project.feriados || [];
+    if (!fin) return 0;
+    let total = 0;
+    modules.forEach((m) => {
+      const inicio = m.fecha_inicio_pruebas || project.fecha_inicio_uat;
+      if (!inicio || fecha < inicio) return;
+      const base = stats(byModule[m.id] || []).base;
+      const dias = businessDays(inicio, fin, feriados);
+      if (!base || !dias) return;
+      const hechos = businessDays(inicio, fecha < fin ? fecha : fin, feriados);
+      total += (base * hechos) / dias;
+    });
+    return Math.round(total);
   }
 
   /* ---------- Estado de cada módulo (tablero y estatus por correo) ----------
@@ -321,7 +347,7 @@
 
   window.UAT = Object.assign(window.UAT || {}, {
     fmtDateTime, fmtDate, csvEscape, norm, store, stats,
-    dayIn, addDays, isBusinessDay, businessDays, daysBetween, fmtDia, fmtFechaAsunto, moduleStatus,
+    dayIn, addDays, isBusinessDay, businessDays, daysBetween, fmtDia, fmtFechaAsunto, moduleStatus, plannedAt,
     openIncidents, incidentRows, businessDaysLeft, ticketParts, redmineNewUrl,
     loadSheetJS, readWorkbook, detectHeaderRow, detectSheet, autoMap, buildImportRows,
   });

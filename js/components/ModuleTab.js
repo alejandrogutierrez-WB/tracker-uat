@@ -69,7 +69,7 @@
         {/* Avance del módulo */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-3">
           <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
-            <span><strong className="font-title text-2xl">{st.avance}%</strong> <span className="text-sm">avance</span></span>
+            <span><strong className="font-title text-2xl">{st.avance}%</strong> <span className="text-sm">aprobados</span></span>
             <span><strong className="font-title text-lg">{st.ejecutado}%</strong> <span className="text-sm">ejecutado</span></span>
             <span className="text-sm text-gray-400 sm:ml-auto">
               {st.by["Aprobado"]} de {st.base} aprobados

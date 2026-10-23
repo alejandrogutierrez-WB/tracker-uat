@@ -7,14 +7,14 @@
    Alternativas: cliente de correo (mailto, texto plano) y descarga
    del cuerpo en .html.
    Depende de: React (hooks), Icon, I, BRAND, INPUT_CLS, ticketParts,
-   APP_URL, stats, moduleStatus, incidentRows, businessDaysLeft, dayIn,
+   APP_URL, stats, moduleStatus, plannedAt, incidentRows, businessDaysLeft, dayIn,
    fmtDate, fmtDateTime, fmtFechaAsunto, updateProject
    Publica en window.UAT: StatusEmail
    ============================================================ */
 (function () {
   const { useState } = React;
   const {
-    Icon, I, BRAND, INPUT_CLS, APP_URL, ticketParts, stats, moduleStatus, incidentRows, businessDaysLeft,
+    Icon, I, BRAND, INPUT_CLS, APP_URL, ticketParts, stats, moduleStatus, plannedAt, incidentRows, businessDaysLeft,
     dayIn, fmtDate, fmtDateTime, fmtFechaAsunto, updateProject,
   } = window.UAT;
 
@@ -40,8 +40,12 @@
     const url = (APP_URL || (window.location.origin + window.location.pathname)) + "?p=" + project.slug;
     const subject = `UAT ${project.cliente} — Estatus al ${fmtFechaAsunto(today)}`;
     const n = project.dias_alerta;
+    // Planificado a hoy (casos que deberían estar aprobados) y atraso.
+    const plan = plannedAt(project, modules, byModule, today);
+    const atraso = Math.max(plan - g.by["Aprobado"], 0);
     const ultima = (r) => (r.last ? `${r.last.updated_by} · ${fmtDateTime(r.last.updated_at)}`
-      : r.st.total === 0 ? "Sin casos cargados" : !r.empezo ? (r.inicio ? `Empieza el ${fmtDate(r.inicio)}` : "—") : "Sin actualizaciones");
+      : r.st.total === 0 ? "Sin casos cargados" : !r.empezo ? (r.inicio ? `Empieza el ${fmtDate(r.inicio)}` : "—")
+      : r.inicio ? `Empezó el ${fmtDate(r.inicio)} · sin actualizaciones` : "Sin actualizaciones");
 
     /* ----- HTML ----- */
     const F = "font-family:Arial,Helvetica,sans-serif;";
@@ -50,7 +54,7 @@
     const num = "text-align:right;white-space:nowrap;";
     const h3 = `${F}font-size:15px;color:${C.ink};margin:22px 0 8px;font-weight:bold;`;
     const kpi = (label, value, note) =>
-      `<td width="25%" style="${F}padding:12px 14px;border:1px solid ${C.border};vertical-align:top;">` +
+      `<td width="20%" style="${F}padding:12px 14px;border:1px solid ${C.border};vertical-align:top;">` +
       `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:${C.body};">${esc(label)}</div>` +
       `<div style="font-size:24px;color:${C.ink};line-height:1.3;">${esc(value)}</div>` +
       `<div style="font-size:11px;color:${C.body};">${esc(note)}</div></td>`;
@@ -68,17 +72,33 @@
       `</tr></table></td></tr></table>`;
 
     html += `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin-top:14px;"><tr>` +
-      kpi("Avance", g.avance + "%", `${g.by["Aprobado"]} de ${g.base} casos aprobados`) +
-      kpi("Ejecutado", g.ejecutado + "%", "En curso, aprobados o con incidente") +
+      kpi("Casos aprobados", g.avance + "%", `${g.by["Aprobado"]} de ${g.base} casos`) +
+      kpi("Ejecutado", g.ejecutado + "%", `${g.ejecutados} casos terminados (OK + NO OK)`) +
+      kpi("Planificado a hoy", plan, atraso > 0 ? `Aprobados: ${g.by["Aprobado"]} · atraso de ${atraso} casos` : `Aprobados: ${g.by["Aprobado"]} · al día con el plan`) +
       kpi("Incidentes abiertos", g.by["Con incidente"], "Registrados en Redmine") +
       kpi("Días hábiles restantes", restantes === null ? "—" : restantes, end ? `Cierre: ${fmtDate(end)}` : "") +
       `</tr></table>`;
+
+    /* Status de avance en cantidad de casos (porcentajes sobre el total sin «No aplica»). */
+    const stCols = [
+      ["Total de casos", g.base, ""],
+      ["Ejecutados", g.ejecutados, g.ejecutado + "%"],
+      ["Pendientes de ejecución", g.porEjecutar, g.pct(g.porEjecutar) + "%"],
+      ["OK (aprobados)", g.by["Aprobado"], g.avance + "%"],
+      ["NO OK (con incidente)", g.by["Con incidente"], g.pct(g.by["Con incidente"]) + "%"],
+      ["En proceso", g.by["En curso"], g.pct(g.by["En curso"]) + "%"],
+    ];
+    html += `<p style="${h3}">Status de avance</p>` +
+      `<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid ${C.border};"><tr>` +
+      stCols.map(([l]) => `<th style="${th}text-align:center;">${esc(l)}</th>`).join("") + `</tr><tr>` +
+      stCols.map(([, v, p]) => `<td style="${td}text-align:center;"><span style="font-size:18px;color:${C.ink};font-weight:bold;">${v}</span>` +
+        (p ? `<br><span style="font-size:12px;">${p}</span>` : "") + `</td>`).join("") + `</tr></table>`;
 
     html += `<p style="${h3}">Avance por módulo</p>` +
       `<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid ${C.border};">` +
       `<tr><th style="${th}">Módulo</th><th style="${th}">Responsable</th><th style="${th}text-align:right;">Total</th><th style="${th}text-align:right;">Aprobados</th>` +
       `<th style="${th}text-align:right;">En curso</th><th style="${th}text-align:right;">Con incidente</th><th style="${th}text-align:right;">No iniciados</th>` +
-      `<th style="${th}text-align:right;">% avance</th><th style="${th}">Última actualización</th></tr>` +
+      `<th style="${th}text-align:right;">% aprobados</th><th style="${th}">Última actualización</th></tr>` +
       rows.map((r) => `<tr><td style="${td}color:${C.ink};font-weight:bold;">${esc(r.m.nombre)}</td><td style="${td}">${esc(r.m.responsable_nombre || "—")}</td>` +
         `<td style="${td}${num}">${r.st.base}</td><td style="${td}${num}">${r.st.by["Aprobado"]}</td><td style="${td}${num}">${r.st.by["En curso"]}</td>` +
         `<td style="${td}${num}">${r.st.by["Con incidente"]}</td><td style="${td}${num}">${r.st.by["No iniciado"]}</td>` +
@@ -112,8 +132,11 @@
     const L = [];
     if (mensaje.trim()) L.push(mensaje.trim(), "");
     L.push(`UAT ${project.cliente} · ${ciclo} — Estatus al ${fmtFechaAsunto(today)}`, "");
-    L.push(`Avance: ${g.avance}% (${g.by["Aprobado"]} de ${g.base} casos aprobados)`, `Ejecutado: ${g.ejecutado}%`,
+    L.push(`Casos aprobados: ${g.avance}% (${g.by["Aprobado"]} de ${g.base})`,
+      `Ejecutado: ${g.ejecutado}% (${g.ejecutados} casos terminados, OK + NO OK)`,
+      `Planificado a hoy: ${plan} casos · aprobados: ${g.by["Aprobado"]}` + (atraso > 0 ? ` · atraso de ${atraso}` : " · al día con el plan"),
       `Incidentes abiertos: ${g.by["Con incidente"]}`, `Días hábiles restantes: ${restantes === null ? "—" : restantes}`, "");
+    L.push("STATUS DE AVANCE", `Total ${g.base} · Ejecutados ${g.ejecutados} · Pendientes de ejecución ${g.porEjecutar} · OK ${g.by["Aprobado"]} · NO OK ${g.by["Con incidente"]} · En proceso ${g.by["En curso"]}`, "");
     L.push("AVANCE POR MÓDULO");
     rows.forEach((r) => L.push(`- ${r.m.nombre} (${r.m.responsable_nombre || "sin responsable"}): ${r.st.avance}% · ` +
       `${r.st.by["Aprobado"]} aprobados, ${r.st.by["En curso"]} en curso, ${r.st.by["Con incidente"]} con incidente, ` +
